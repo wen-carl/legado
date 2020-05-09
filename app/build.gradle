@@ -19,7 +19,7 @@ def gitCommits = Integer.parseInt('git rev-list --count HEAD'.execute().text.tri
 
 android {
     compileSdkVersion 29
-    flavorDimensions ("version")
+    flavorDimensions("version")
     signingConfigs {
         if (project.hasProperty("RELEASE_STORE_FILE")) {
             myConfig {
@@ -117,7 +117,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
     //fireBase
-    implementation 'com.google.firebase:firebase-core:17.3.0'
+    implementation 'com.google.firebase:firebase-core:17.4.0'
     implementation 'com.crashlytics.sdk.android:crashlytics:2.10.1'
 
     //androidX
@@ -196,3 +196,9 @@ dependencies {
 }
 
 apply plugin: 'com.google.gms.google-services'
+
+afterEvaluate {
+    for (Task task : project.tasks.matching { it.name.startsWith('crashlyticsUploadDeobs') }) {
+        task.enabled = false
+    }
+}

@@ -280,6 +280,18 @@ class ReadBookActivity : VMBaseActivity<ReadBookViewModel>(R.layout.activity_boo
      */
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
+            getPrefInt(PreferKey.prevKey) -> {
+                if (keyCode != KeyEvent.KEYCODE_UNKNOWN) {
+                    page_view.pageDelegate?.keyTurnPage(PageDelegate.Direction.PREV)
+                    return true
+                }
+            }
+            getPrefInt(PreferKey.nextKey) -> {
+                if (keyCode != KeyEvent.KEYCODE_UNKNOWN) {
+                    page_view.pageDelegate?.keyTurnPage(PageDelegate.Direction.NEXT)
+                    return true
+                }
+            }
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 if (volumeKeyPage(PageDelegate.Direction.PREV)) {
                     return true
@@ -293,18 +305,6 @@ class ReadBookActivity : VMBaseActivity<ReadBookViewModel>(R.layout.activity_boo
             KeyEvent.KEYCODE_SPACE -> {
                 page_view.pageDelegate?.keyTurnPage(PageDelegate.Direction.NEXT)
                 return true
-            }
-            getPrefInt(PreferKey.prevKey) -> {
-                if (keyCode != KeyEvent.KEYCODE_UNKNOWN) {
-                    page_view.pageDelegate?.keyTurnPage(PageDelegate.Direction.PREV)
-                    return true
-                }
-            }
-            getPrefInt(PreferKey.nextKey) -> {
-                if (keyCode != KeyEvent.KEYCODE_UNKNOWN) {
-                    page_view.pageDelegate?.keyTurnPage(PageDelegate.Direction.NEXT)
-                    return true
-                }
             }
         }
         return super.onKeyDown(keyCode, event)
@@ -507,7 +507,7 @@ class ReadBookActivity : VMBaseActivity<ReadBookViewModel>(R.layout.activity_boo
                 } else {
                     tv_chapter_url.gone()
                 }
-                seek_read_page.max = it.pageSize().minus(1)
+                seek_read_page.max = it.pageSize.minus(1)
                 seek_read_page.progress = ReadBook.durPageIndex
                 tv_pre.isEnabled = ReadBook.durChapterIndex != 0
                 tv_next.isEnabled = ReadBook.durChapterIndex != ReadBook.chapterSize - 1

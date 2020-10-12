@@ -55,12 +55,12 @@ class ExploreAdapter(context: Context, private val scope: CoroutineScope, val ca
                                 .inflate(R.layout.item_fillet_text, gl_child, false)
                             gl_child.addView(tv)
                             tv.text_view.text = kind.title
-                            tv.text_view.onClick {
-                                kind.url?.let { kindUrl ->
+                            if (!kind.url.isNullOrEmpty()) {
+                                tv.text_view.onClick {
                                     callBack.openExplore(
                                         item.bookSourceUrl,
                                         kind.title,
-                                        kindUrl
+                                        kind.url.toString()
                                     )
                                 }
                             }
@@ -97,6 +97,17 @@ class ExploreAdapter(context: Context, private val scope: CoroutineScope, val ca
             ll_title.onLongClick {
                 showMenu(ll_title, holder.layoutPosition)
             }
+        }
+    }
+
+    fun compressExplore(): Boolean {
+        return if (exIndex < 0) {
+            false
+        } else {
+            val oldExIndex = exIndex
+            exIndex = -1
+            notifyItemChanged(oldExIndex)
+            true
         }
     }
 

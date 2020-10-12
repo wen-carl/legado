@@ -7,17 +7,18 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import io.legado.app.App
 import io.legado.app.R
 import io.legado.app.base.BaseFragment
+import io.legado.app.base.BasePreferenceFragment
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
-import io.legado.app.help.channel
+import io.legado.app.help.AppConfig
 import io.legado.app.lib.theme.ATH
 import io.legado.app.service.WebService
 import io.legado.app.ui.about.AboutActivity
 import io.legado.app.ui.about.DonateActivity
+import io.legado.app.ui.about.ReadRecordActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.config.BackupRestoreUi
 import io.legado.app.ui.config.ConfigActivity
@@ -28,7 +29,10 @@ import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.ui.widget.prefs.NameListPreference
 import io.legado.app.ui.widget.prefs.PreferenceCategory
 import io.legado.app.ui.widget.prefs.SwitchPreference
-import io.legado.app.utils.*
+import io.legado.app.utils.LogUtils
+import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.observeEventSticky
+import io.legado.app.utils.putPrefBoolean
 import kotlinx.android.synthetic.main.view_title_bar.*
 import org.jetbrains.anko.startActivity
 
@@ -65,7 +69,10 @@ class MyFragment : BaseFragment(R.layout.fragment_my_config), FileChooserDialog.
         BackupRestoreUi.onActivityResult(requestCode, resultCode, data)
     }
 
-    class PreferenceFragment : PreferenceFragmentCompat(),
+    /**
+     * 配置
+     */
+    class PreferenceFragment : BasePreferenceFragment(),
         SharedPreferences.OnSharedPreferenceChangeListener {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -76,10 +83,23 @@ class MyFragment : BaseFragment(R.layout.fragment_my_config), FileChooserDialog.
             }
             addPreferencesFromResource(R.xml.pref_main)
             val webServicePre = findPreference<SwitchPreference>(PreferKey.webService)
-            observeEvent<Boolean>(EventBus.WEB_SERVICE_STOP) {
-                webServicePre?.isChecked = false
+            observeEventSticky<String>(EventBus.WEB_SERVICE) {
+                webServicePre?.let {
+                    it.isChecked = WebService.isRun
+                    it.summary = if (WebService.isRun) {
+                        WebService.hostAddress
+                    } else {
+                        getString(R.string.web_service_desc)
+                    }
+                }
             }
-            if (requireContext().channel == "google") {
+            findPreference<NameListPreference>(PreferKey.themeMode)?.let {
+                it.setOnPreferenceChangeListener { _, _ ->
+                    view?.post { App.INSTANCE.applyDayNight() }
+                    true
+                }
+            }
+            if (AppConfig.isGooglePlay) {
                 findPreference<PreferenceCategory>("aboutCategory")
                     ?.removePreference(findPreference("donate"))
             }
@@ -108,10 +128,8 @@ class MyFragment : BaseFragment(R.layout.fragment_my_config), FileChooserDialog.
                 PreferKey.webService -> {
                     if (requireContext().getPrefBoolean("webService")) {
                         WebService.start(requireContext())
-                        toast(R.string.service_start)
                     } else {
                         WebService.stop(requireContext())
-                        toast(R.string.service_stop)
                     }
                 }
                 "recordLog" -> LogUtils.upLevel()
@@ -131,6 +149,7 @@ class MyFragment : BaseFragment(R.layout.fragment_my_config), FileChooserDialog.
                 "theme_setting" -> context?.startActivity<ConfigActivity>(
                     Pair("configType", ConfigViewModel.TYPE_THEME_CONFIG)
                 )
+                "readRecord" -> context?.startActivity<ReadRecordActivity>()
                 "donate" -> context?.startActivity<DonateActivity>()
                 "about" -> context?.startActivity<AboutActivity>()
             }

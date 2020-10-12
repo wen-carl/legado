@@ -4,18 +4,43 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import io.legado.app.App
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.BookHelp
-import io.legado.app.utils.FileUtils
-import io.legado.app.utils.isContentPath
+import io.legado.app.utils.*
 import java.io.File
 
 
 object LocalBook {
 
-    fun importFile(path: String) {
+    fun getChapterList(book: Book): ArrayList<BookChapter> {
+        return if (book.isEpub()) {
+            EPUBFile.getChapterList(book)
+        } else {
+            AnalyzeTxtFile().analyze(book)
+        }
+    }
+
+    fun getContext(book: Book, chapter: BookChapter): String? {
+        return if (book.isEpub()) {
+            EPUBFile.getContent(book, chapter)
+        } else {
+            AnalyzeTxtFile.getContent(book, chapter)
+        }
+    }
+
+    fun importFile(path: String): Book {
         val fileName = if (path.isContentPath()) {
             val doc = DocumentFile.fromSingleUri(App.INSTANCE, Uri.parse(path))
-            doc?.name ?: ""
+            doc?.let {
+                val bookFile = FileUtils.getFile(AnalyzeTxtFile.cacheFolder, it.name!!)
+                if (!bookFile.exists()) {
+                    bookFile.createNewFile()
+                    doc.readBytes(App.INSTANCE)?.let { bytes ->
+                        bookFile.writeBytes(bytes)
+                    }
+                }
+            }
+            doc?.name!!
         } else {
             File(path).name
         }
@@ -29,7 +54,7 @@ object LocalBook {
         } else {
             name = str.substring(0, authorIndex)
             author = str.substring(authorIndex)
-            author = BookHelp.formatAuthor(author)
+            author = BookHelp.formatBookAuthor(author)
         }
         val smhStart = name.indexOf("《")
         val smhEnd = name.indexOf("》")
@@ -40,14 +65,20 @@ object LocalBook {
             bookUrl = path,
             name = name,
             author = author,
-            originName = fileName
+            originName = fileName,
+            coverUrl = FileUtils.getPath(
+                App.INSTANCE.externalFilesDir,
+                "covers",
+                "${MD5Utils.md5Encode16(path)}.jpg"
+            )
         )
         App.db.bookDao().insert(book)
+        return book
     }
 
     fun deleteBook(book: Book, deleteOriginal: Boolean) {
         kotlin.runCatching {
-            if (book.isTxt()) {
+            if (book.isLocalTxt()) {
                 val bookFile = FileUtils.getFile(AnalyzeTxtFile.cacheFolder, book.originName)
                 bookFile.delete()
             }

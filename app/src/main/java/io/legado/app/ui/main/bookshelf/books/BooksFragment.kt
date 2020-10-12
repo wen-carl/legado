@@ -3,7 +3,6 @@ package io.legado.app.ui.main.bookshelf.books
 import android.os.Bundle
 import android.view.View
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -16,6 +15,7 @@ import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
+import io.legado.app.help.AppConfig
 import io.legado.app.help.IntentDataHelp
 import io.legado.app.lib.theme.ATH
 import io.legado.app.lib.theme.accentColor
@@ -23,9 +23,7 @@ import io.legado.app.ui.audio.AudioPlayActivity
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.main.MainViewModel
-import io.legado.app.utils.getPrefInt
-import io.legado.app.utils.getViewModelOfActivity
-import io.legado.app.utils.observeEvent
+import io.legado.app.utils.*
 import kotlinx.android.synthetic.main.fragment_books.*
 import org.jetbrains.anko.startActivity
 import kotlin.math.max
@@ -35,27 +33,27 @@ class BooksFragment : BaseFragment(R.layout.fragment_books),
     BaseBooksAdapter.CallBack {
 
     companion object {
-        fun newInstance(position: Int, groupId: Int): BooksFragment {
+        fun newInstance(position: Int, groupId: Long): BooksFragment {
             return BooksFragment().apply {
                 val bundle = Bundle()
                 bundle.putInt("position", position)
-                bundle.putInt("groupId", groupId)
+                bundle.putLong("groupId", groupId)
                 arguments = bundle
             }
         }
     }
 
-    private lateinit var activityViewModel: MainViewModel
+    private val activityViewModel: MainViewModel
+        get() = getViewModelOfActivity(MainViewModel::class.java)
     private lateinit var booksAdapter: BaseBooksAdapter
     private var bookshelfLiveData: LiveData<List<Book>>? = null
     private var position = 0
-    private var groupId = -1
+    private var groupId = -1L
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        activityViewModel = getViewModelOfActivity(MainViewModel::class.java)
         arguments?.let {
             position = it.getInt("position", 0)
-            groupId = it.getInt("groupId", -1)
+            groupId = it.getLong("groupId", -1)
         }
         initRecyclerView()
         upRecyclerData()
@@ -66,7 +64,7 @@ class BooksFragment : BaseFragment(R.layout.fragment_books),
         refresh_layout.setColorSchemeColors(accentColor)
         refresh_layout.setOnRefreshListener {
             refresh_layout.isRefreshing = false
-            activityViewModel.upChapterList()
+            activityViewModel.upToc(booksAdapter.getItems())
         }
         val bookshelfLayout = getPrefInt(PreferKey.bookshelfLayout)
         if (bookshelfLayout == 0) {
@@ -105,7 +103,7 @@ class BooksFragment : BaseFragment(R.layout.fragment_books),
             AppConst.bookGroupNone.groupId -> App.db.bookDao().observeNoGroup()
             else -> App.db.bookDao().observeByGroup(groupId)
         }
-        bookshelfLiveData?.observe(this, Observer { list ->
+        bookshelfLiveData?.observe(this, { list ->
             val books = when (getPrefInt(PreferKey.bookshelfSort)) {
                 1 -> list.sortedByDescending { it.latestChapterTime }
                 2 -> list.sortedBy { it.name }
@@ -116,6 +114,18 @@ class BooksFragment : BaseFragment(R.layout.fragment_books),
                 .calculateDiff(BooksDiffCallBack(booksAdapter.getItems(), books))
             booksAdapter.setItems(books, diffResult)
         })
+    }
+
+    fun getBooks(): List<Book> {
+        return booksAdapter.getItems()
+    }
+
+    fun gotoTop() {
+        if (AppConfig.isEInkMode) {
+            rv_bookshelf.scrollToPosition(0)
+        } else {
+            rv_bookshelf.smoothScrollToPosition(0)
+        }
     }
 
     override fun open(book: Book) {
@@ -130,7 +140,10 @@ class BooksFragment : BaseFragment(R.layout.fragment_books),
     }
 
     override fun openBookInfo(book: Book) {
-        context?.startActivity<BookInfoActivity>(Pair("bookUrl", book.bookUrl))
+        startActivity<BookInfoActivity>(
+            Pair("name", book.name),
+            Pair("author", book.author)
+        )
     }
 
     override fun isUpdate(bookUrl: String): Boolean {

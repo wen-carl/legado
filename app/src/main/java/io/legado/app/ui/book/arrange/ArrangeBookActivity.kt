@@ -5,7 +5,6 @@ import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.App
@@ -15,7 +14,6 @@ import io.legado.app.constant.AppConst
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
-import io.legado.app.help.ItemTouchCallback
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.noButton
 import io.legado.app.lib.dialogs.okButton
@@ -23,6 +21,7 @@ import io.legado.app.lib.theme.ATH
 import io.legado.app.ui.book.group.GroupManageDialog
 import io.legado.app.ui.book.group.GroupSelectDialog
 import io.legado.app.ui.widget.SelectActionBar
+import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getPrefInt
@@ -42,10 +41,10 @@ class ArrangeBookActivity : VMBaseActivity<ArrangeBookViewModel>(R.layout.activi
     private var groupLiveData: LiveData<List<BookGroup>>? = null
     private var booksLiveData: LiveData<List<Book>>? = null
     private var menu: Menu? = null
-    private var groupId: Int = -1
+    private var groupId: Long = -1
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        groupId = intent.getIntExtra("groupId", -1)
+        groupId = intent.getLongExtra("groupId", -1)
         title_bar.subtitle = intent.getStringExtra("groupName") ?: getString(R.string.all)
         initView()
         initGroupData()
@@ -86,7 +85,7 @@ class ArrangeBookActivity : VMBaseActivity<ArrangeBookViewModel>(R.layout.activi
             }
 
             override fun onClickMainAction() {
-                selectGroup(0, groupRequestCode)
+                selectGroup(groupRequestCode, 0)
             }
         })
     }
@@ -94,7 +93,7 @@ class ArrangeBookActivity : VMBaseActivity<ArrangeBookViewModel>(R.layout.activi
     private fun initGroupData() {
         groupLiveData?.removeObservers(this)
         groupLiveData = App.db.bookGroupDao().liveDataAll()
-        groupLiveData?.observe(this, Observer {
+        groupLiveData?.observe(this, {
             groupList.clear()
             groupList.addAll(it)
             adapter.notifyDataSetChanged()
@@ -112,7 +111,7 @@ class ArrangeBookActivity : VMBaseActivity<ArrangeBookViewModel>(R.layout.activi
                 AppConst.bookGroupNone.groupId -> App.db.bookDao().observeNoGroup()
                 else -> App.db.bookDao().observeByGroup(groupId)
             }
-        booksLiveData?.observe(this, Observer { list ->
+        booksLiveData?.observe(this, { list ->
             val books = when (getPrefInt(PreferKey.bookshelfSort)) {
                 1 -> list.sortedByDescending { it.latestChapterTime }
                 2 -> list.sortedBy { it.name }
@@ -150,7 +149,7 @@ class ArrangeBookActivity : VMBaseActivity<ArrangeBookViewModel>(R.layout.activi
             }
             else -> if (item.groupId == R.id.menu_group) {
                 title_bar.subtitle = item.title
-                groupId = item.itemId
+                groupId = App.db.bookGroupDao().getByName(item.title.toString())?.groupId ?: 0
                 initBookData()
             }
         }
@@ -168,7 +167,7 @@ class ArrangeBookActivity : VMBaseActivity<ArrangeBookViewModel>(R.layout.activi
                 viewModel.upCanUpdate(adapter.selectedBooks(), true)
             R.id.menu_update_disable ->
                 viewModel.upCanUpdate(adapter.selectedBooks(), false)
-            R.id.menu_add_to_group -> selectGroup(0, addToGroupRequestCode)
+            R.id.menu_add_to_group -> selectGroup(addToGroupRequestCode, 0)
         }
         return false
     }
@@ -177,16 +176,16 @@ class ArrangeBookActivity : VMBaseActivity<ArrangeBookViewModel>(R.layout.activi
         menu?.findItem(R.id.menu_book_group)?.subMenu?.let { subMenu ->
             subMenu.removeGroup(R.id.menu_group)
             groupList.forEach { bookGroup ->
-                subMenu.add(R.id.menu_group, bookGroup.groupId, Menu.NONE, bookGroup.groupName)
+                subMenu.add(R.id.menu_group, bookGroup.order, Menu.NONE, bookGroup.groupName)
             }
         }
     }
 
-    override fun selectGroup(groupId: Int, requestCode: Int) {
+    override fun selectGroup(requestCode: Int, groupId: Long) {
         GroupSelectDialog.show(supportFragmentManager, groupId, requestCode)
     }
 
-    override fun upGroup(requestCode: Int, groupId: Int) {
+    override fun upGroup(requestCode: Int, groupId: Long) {
         when (requestCode) {
             groupRequestCode -> {
                 val books = arrayListOf<Book>()

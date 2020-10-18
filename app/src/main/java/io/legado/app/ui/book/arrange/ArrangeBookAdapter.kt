@@ -2,6 +2,7 @@ package io.legado.app.ui.book.arrange
 
 import android.content.Context
 import android.view.View
+import androidx.core.os.bundleOf
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
@@ -9,6 +10,7 @@ import io.legado.app.base.adapter.SimpleRecyclerAdapter
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import kotlinx.android.synthetic.main.item_arrange_book.view.*
 import org.jetbrains.anko.backgroundColor
@@ -17,7 +19,7 @@ import java.util.*
 
 class ArrangeBookAdapter(context: Context, val callBack: CallBack) :
     SimpleRecyclerAdapter<Book>(context, R.layout.item_arrange_book),
-    ItemTouchCallback.OnItemTouchCallbackListener {
+    ItemTouchCallback.Callback {
     val groupRequestCode = 12
     private val selectedBooks: HashSet<Book> = hashSetOf()
     var actionItem: Book? = null
@@ -110,7 +112,7 @@ class ArrangeBookAdapter(context: Context, val callBack: CallBack) :
     private fun getGroupList(groupId: Long): List<String> {
         val groupNames = arrayListOf<String>()
         callBack.groupList.forEach {
-            if (it.groupId and groupId > 0) {
+            if (it.groupId > 0 && it.groupId and groupId > 0) {
                 groupNames.add(it.groupName)
             }
         }
@@ -152,6 +154,32 @@ class ArrangeBookAdapter(context: Context, val callBack: CallBack) :
             callBack.updateBook(*getItems().toTypedArray())
         }
         isMoved = false
+    }
+
+    fun initDragSelectTouchHelperCallback(): DragSelectTouchHelper.Callback {
+        return object : DragSelectTouchHelper.AdvanceCallback<Book>(Mode.ToggleAndReverse) {
+            override fun currentSelectedId(): MutableSet<Book> {
+                return selectedBooks
+            }
+
+            override fun getItemId(position: Int): Book {
+                return getItem(position)!!
+            }
+
+            override fun updateSelectState(position: Int, isSelected: Boolean): Boolean {
+                getItem(position)?.let {
+                    if (isSelected) {
+                        selectedBooks.add(it)
+                    } else {
+                        selectedBooks.remove(it)
+                    }
+                    notifyItemChanged(position, bundleOf(Pair("selected", null)))
+                    callBack.upSelectCount()
+                    return true
+                }
+                return false
+            }
+        }
     }
 
     interface CallBack {

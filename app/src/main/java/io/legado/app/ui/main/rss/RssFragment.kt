@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import androidx.recyclerview.widget.GridLayoutManager
+import androidx.core.view.isGone
 import io.legado.app.App
 import io.legado.app.R
 import io.legado.app.base.VMBaseFragment
@@ -22,6 +22,9 @@ import io.legado.app.utils.startActivity
 import kotlinx.android.synthetic.main.fragment_rss.*
 import kotlinx.android.synthetic.main.view_title_bar.*
 
+/**
+ * 订阅界面
+ */
 class RssFragment : VMBaseFragment<RssSourceViewModel>(R.layout.fragment_rss),
     RssAdapter.CallBack {
 
@@ -50,12 +53,12 @@ class RssFragment : VMBaseFragment<RssSourceViewModel>(R.layout.fragment_rss),
     private fun initRecyclerView() {
         ATH.applyEdgeEffectColor(recycler_view)
         adapter = RssAdapter(requireContext(), this)
-        recycler_view.layoutManager = GridLayoutManager(requireContext(), 4)
         recycler_view.adapter = adapter
     }
 
     private fun initData() {
         App.db.rssSourceDao().liveEnabled().observe(viewLifecycleOwner, {
+            tv_empty_msg.isGone = it.isNotEmpty()
             if (it.isEmpty()) {
                 getViewModelOfActivity(MainViewModel::class.java).initRss()
             }

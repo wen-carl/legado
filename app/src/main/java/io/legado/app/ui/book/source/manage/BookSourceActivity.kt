@@ -166,15 +166,13 @@ class BookSourceActivity : VMBaseActivity<BookSourceViewModel>(R.layout.activity
         recycler_view.addItemDecoration(VerticalDivider(this))
         adapter = BookSourceAdapter(this, this)
         recycler_view.adapter = adapter
-        val itemTouchCallback = ItemTouchCallback()
-        itemTouchCallback.onItemTouchCallbackListener = adapter
+        val itemTouchCallback = ItemTouchCallback(adapter)
         itemTouchCallback.isCanDrag = true
         val dragSelectTouchHelper: DragSelectTouchHelper =
             DragSelectTouchHelper(adapter.initDragSelectTouchHelperCallback()).setSlideArea(16, 50)
         dragSelectTouchHelper.attachToRecyclerView(recycler_view)
         // When this page is opened, it is in selection mode
         dragSelectTouchHelper.activeSlideSelect()
-
         // Note: need judge selection first, so add ItemTouchHelper after it.
         ItemTouchHelper(itemTouchCallback).attachToRecyclerView(recycler_view)
     }

@@ -2,6 +2,7 @@ package io.legado.app.ui.main.bookshelf.books
 
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.isGone
 import androidx.lifecycle.LiveData
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
@@ -23,12 +24,16 @@ import io.legado.app.ui.audio.AudioPlayActivity
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.main.MainViewModel
-import io.legado.app.utils.*
+import io.legado.app.utils.getPrefInt
+import io.legado.app.utils.getViewModelOfActivity
+import io.legado.app.utils.observeEvent
+import io.legado.app.utils.startActivity
 import kotlinx.android.synthetic.main.fragment_books.*
-import org.jetbrains.anko.startActivity
 import kotlin.math.max
 
-
+/**
+ * 书架界面
+ */
 class BooksFragment : BaseFragment(R.layout.fragment_books),
     BaseBooksAdapter.CallBack {
 
@@ -97,13 +102,14 @@ class BooksFragment : BaseFragment(R.layout.fragment_books),
     private fun upRecyclerData() {
         bookshelfLiveData?.removeObservers(this)
         bookshelfLiveData = when (groupId) {
-            AppConst.bookGroupAll.groupId -> App.db.bookDao().observeAll()
-            AppConst.bookGroupLocal.groupId -> App.db.bookDao().observeLocal()
-            AppConst.bookGroupAudio.groupId -> App.db.bookDao().observeAudio()
-            AppConst.bookGroupNone.groupId -> App.db.bookDao().observeNoGroup()
+            AppConst.bookGroupAllId -> App.db.bookDao().observeAll()
+            AppConst.bookGroupLocalId -> App.db.bookDao().observeLocal()
+            AppConst.bookGroupAudioId -> App.db.bookDao().observeAudio()
+            AppConst.bookGroupNoneId -> App.db.bookDao().observeNoGroup()
             else -> App.db.bookDao().observeByGroup(groupId)
         }
         bookshelfLiveData?.observe(this, { list ->
+            tv_empty_msg.isGone = list.isNotEmpty()
             val books = when (getPrefInt(PreferKey.bookshelfSort)) {
                 1 -> list.sortedByDescending { it.latestChapterTime }
                 2 -> list.sortedBy { it.name }
@@ -131,8 +137,8 @@ class BooksFragment : BaseFragment(R.layout.fragment_books),
     override fun open(book: Book) {
         when (book.type) {
             BookType.audio ->
-                context?.startActivity<AudioPlayActivity>(Pair("bookUrl", book.bookUrl))
-            else -> context?.startActivity<ReadBookActivity>(
+                startActivity<AudioPlayActivity>(Pair("bookUrl", book.bookUrl))
+            else -> startActivity<ReadBookActivity>(
                 Pair("bookUrl", book.bookUrl),
                 Pair("key", IntentDataHelp.putData(book))
             )

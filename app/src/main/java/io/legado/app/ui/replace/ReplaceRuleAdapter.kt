@@ -1,4 +1,4 @@
-package io.legado.app.ui.replacerule
+package io.legado.app.ui.replace
 
 import android.content.Context
 import android.os.Bundle
@@ -20,7 +20,7 @@ import java.util.*
 
 class ReplaceRuleAdapter(context: Context, var callBack: CallBack) :
     SimpleRecyclerAdapter<ReplaceRule>(context, R.layout.item_replace_rule),
-    ItemTouchCallback.OnItemTouchCallbackListener {
+    ItemTouchCallback.Callback {
 
     private val selected = linkedSetOf<ReplaceRule>()
 

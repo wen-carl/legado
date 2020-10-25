@@ -24,11 +24,11 @@ import io.legado.app.utils.sp
 import kotlin.math.min
 import kotlin.math.pow
 
-class CircleImageView(context: Context, attrs: AttributeSet) :
-    AppCompatImageView(
-        context,
-        attrs
-    ) {
+@Suppress("unused", "MemberVisibilityCanBePrivate")
+class CircleImageView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : AppCompatImageView(context, attrs) {
 
     private val mDrawableRect = RectF()
     private val mBorderRect = RectF()

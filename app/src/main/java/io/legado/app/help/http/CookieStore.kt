@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package io.legado.app.help.http
 
 import android.text.TextUtils
@@ -41,7 +43,7 @@ object CookieStore : CookiePersistor {
         App.db.cookieDao().delete(NetworkUtils.getSubDomain(url))
     }
 
-    private fun cookieToMap(cookie: String): MutableMap<String, String> {
+    fun cookieToMap(cookie: String): MutableMap<String, String> {
         val cookieMap = mutableMapOf<String, String>()
         if (cookie.isBlank()) {
             return cookieMap
@@ -61,7 +63,7 @@ object CookieStore : CookiePersistor {
         return cookieMap
     }
 
-    private fun mapToCookie(cookieMap: Map<String, String>?): String? {
+    fun mapToCookie(cookieMap: Map<String, String>?): String? {
         if (cookieMap == null || cookieMap.isEmpty()) {
             return null
         }

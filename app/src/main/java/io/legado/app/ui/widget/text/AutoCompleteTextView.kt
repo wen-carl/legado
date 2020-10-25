@@ -16,12 +16,11 @@ import io.legado.app.utils.visible
 import kotlinx.android.synthetic.main.item_1line_text_and_del.view.*
 import org.jetbrains.anko.sdk27.listeners.onClick
 
-
-class AutoCompleteTextView : AppCompatAutoCompleteTextView {
-
-    constructor(context: Context) : super(context)
-
-    constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
+@Suppress("unused")
+class AutoCompleteTextView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : AppCompatAutoCompleteTextView(context, attrs) {
 
     var delCallBack: ((value: String) -> Unit)? = null
 
@@ -32,7 +31,6 @@ class AutoCompleteTextView : AppCompatAutoCompleteTextView {
     override fun enoughToFilter(): Boolean {
         return true
     }
-
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {

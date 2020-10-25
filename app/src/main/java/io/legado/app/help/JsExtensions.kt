@@ -3,6 +3,7 @@ package io.legado.app.help
 import android.util.Base64
 import androidx.annotation.Keep
 import io.legado.app.constant.AppConst.dateFormat
+import io.legado.app.help.http.CookieStore
 import io.legado.app.help.http.SSLHelper
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.*
@@ -118,6 +119,19 @@ interface JsExtensions {
             .method(Connection.Method.POST)
             .execute()
     }
+
+     /**
+      *js实现读取cookie
+      */
+     fun getCookie(tag: String, key: String? = null): String {
+        val cookie = CookieStore.getCookie(tag)
+        val cookieMap = CookieStore.cookieToMap(cookie)
+        return if (key != null) {
+            cookieMap[key] ?: ""
+        } else {
+            cookie
+        }
+     }
 
     /**
      * js实现解码,不能删

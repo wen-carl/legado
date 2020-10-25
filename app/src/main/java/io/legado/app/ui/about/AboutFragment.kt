@@ -13,8 +13,8 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.openUrl
+import io.legado.app.utils.sendMail
 import io.legado.app.utils.sendToClip
-import io.legado.app.utils.toast
 
 class AboutFragment : PreferenceFragmentCompat() {
 
@@ -29,7 +29,8 @@ class AboutFragment : PreferenceFragmentCompat() {
         Pair("(QQ群3)981838750", "g_Sgmp2nQPKqcZQ5qPcKLHziwX_mpps9"),
         Pair("(QQ群4)256929088", "czEJPLDnT4Pd9SKQ6RoRVzKhDxLchZrO"),
         Pair("(QQ群5)811843556", "zKZ2UYGZ7o5CzcA6ylxzlqi21si_iqaX"),
-        Pair("(QQ群6)870270970", "FeCF8iSxfQbe90HPvGsvcqs5P5oSeY5n")
+        Pair("(QQ群6)870270970", "FeCF8iSxfQbe90HPvGsvcqs5P5oSeY5n"),
+        Pair("(QQ群7)15987187", "S2g2TMD0LGd3sefUADd1AbyPEW2o2XfC")
     )
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -48,7 +49,7 @@ class AboutFragment : PreferenceFragmentCompat() {
             "contributors" -> openUrl(R.string.contributors_url)
             "update_log" -> showUpdateLog()
             "check_update" -> openUrl(R.string.latest_release_url)
-            "mail" -> sendMail()
+            "mail" -> requireContext().sendMail("kunfei.ge@gmail.com")
             "sourceRuleSummary" -> openUrl(R.string.source_rule_url)
             "git" -> openUrl(R.string.this_github_url)
             "home_page" -> openUrl(R.string.home_page_url)
@@ -64,16 +65,6 @@ class AboutFragment : PreferenceFragmentCompat() {
     @Suppress("SameParameterValue")
     private fun openUrl(@StringRes addressID: Int) {
         requireContext().openUrl(getString(addressID))
-    }
-
-    private fun sendMail() {
-        try {
-            val intent = Intent(Intent.ACTION_SENDTO)
-            intent.data = Uri.parse("mailto:kunfei.ge@gmail.com")
-            startActivity(intent)
-        } catch (e: Exception) {
-            toast(e.localizedMessage ?: "Error")
-        }
     }
 
     private fun showUpdateLog() {

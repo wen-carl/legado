@@ -21,7 +21,11 @@ import org.jetbrains.anko.backgroundColor
 import org.jetbrains.anko.bottomPadding
 import org.jetbrains.anko.topPadding
 
-class TitleBar(context: Context, attrs: AttributeSet?) : AppBarLayout(context, attrs) {
+@Suppress("unused")
+class TitleBar @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : AppBarLayout(context, attrs) {
 
     val toolbar: Toolbar
     val menu: Menu

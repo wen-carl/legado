@@ -26,10 +26,6 @@ object ReadBookConfig {
     val shareConfigFilePath = FileUtils.getPath(App.INSTANCE.filesDir, shareConfigFileName)
     val configList: ArrayList<Config> = arrayListOf()
     lateinit var shareConfig: Config
-    private val defaultConfigs by lazy {
-        val json = String(App.INSTANCE.assets.open(configFileName).readBytes())
-        GSON.fromJsonArray<Config>(json)!!
-    }
     var durConfig
         get() = getConfig(styleSelect)
         set(value) {
@@ -68,7 +64,7 @@ object ReadBookConfig {
                 e.printStackTrace()
             }
         }
-        (configs ?: defaultConfigs).let {
+        (configs ?: DefaultData.defaultReadConfigs).let {
             configList.clear()
             configList.addAll(it)
         }
@@ -100,7 +96,6 @@ object ReadBookConfig {
                 bgMeanColor = color
             }
         }
-        isScroll = pageAnim == 3
     }
 
     fun save() {
@@ -131,7 +126,7 @@ object ReadBookConfig {
     }
 
     private fun resetAll() {
-        defaultConfigs.let {
+        DefaultData.defaultReadConfigs.let {
             configList.clear()
             configList.addAll(it)
             save()
@@ -158,8 +153,8 @@ object ReadBookConfig {
                 App.INSTANCE.putPrefBoolean(PreferKey.shareLayout, value)
             }
         }
-    var isScroll = pageAnim == 3
     val clickTurnPage get() = App.INSTANCE.getPrefBoolean(PreferKey.clickTurnPage, true)
+    val clickAllNext get() = App.INSTANCE.getPrefBoolean(PreferKey.clickAllNext, false)
     val textFullJustify get() = App.INSTANCE.getPrefBoolean(PreferKey.textFullJustify, true)
     val textBottomJustify get() = App.INSTANCE.getPrefBoolean(PreferKey.textBottomJustify, true)
     var hideStatusBar = App.INSTANCE.getPrefBoolean(PreferKey.hideStatusBar)
@@ -171,7 +166,6 @@ object ReadBookConfig {
         get() = config.curPageAnim()
         set(value) {
             config.setCurPageAnim(value)
-            isScroll = pageAnim == 3
         }
 
     var textFont: String

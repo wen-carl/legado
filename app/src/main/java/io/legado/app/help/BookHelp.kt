@@ -11,7 +11,6 @@ import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.utils.*
-import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -102,7 +101,7 @@ object BookHelp {
         downloadImages.add(src)
         val analyzeUrl = AnalyzeUrl(src)
         try {
-            analyzeUrl.getImageBytes(book.origin)?.let {
+            analyzeUrl.getResponseBytes(book.origin)?.let {
                 FileUtils.createFileIfNotExist(
                     downloadDir,
                     cacheFolderName,
@@ -267,8 +266,9 @@ object BookHelp {
         }
     }
 
-    private val chapterNamePattern =
+    private val chapterNamePattern by lazy {
         Pattern.compile("^(.*?第([\\d零〇一二两三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟０-９\\s]+)[章节篇回集])[、，。　：:.\\s]*")
+    }
 
     private fun getChapterNum(chapterName: String?): Int {
         if (chapterName != null) {
@@ -280,15 +280,25 @@ object BookHelp {
         return -1
     }
 
-    private fun getPureChapterName(chapterName: String?): String {
+    @Suppress("SpellCheckingInspection")
+    private val regexOther by lazy {
         // 所有非字母数字中日韩文字 CJK区+扩展A-F区
+        return@lazy "[^\\w\\u4E00-\\u9FEF〇\\u3400-\\u4DBF\\u20000-\\u2A6DF\\u2A700-\\u2EBEF]".toRegex()
+    }
+
+    private val regexA by lazy {
+        return@lazy "\\s".toRegex()
+    }
+
+    private val regexB by lazy {
+        return@lazy "^第.*?章|[(\\[][^()\\[\\]]{2,}[)\\]]$".toRegex()
+    }
+
+    private fun getPureChapterName(chapterName: String?): String {
         return if (chapterName == null) "" else StringUtils.fullToHalf(chapterName)
-            .replace("\\s".toRegex(), "")
-            .replace("^第.*?章|[(\\[][^()\\[\\]]{2,}[)\\]]$".toRegex(), "")
-            .replace(
-                "[^\\w\\u4E00-\\u9FEF〇\\u3400-\\u4DBF\\u20000-\\u2A6DF\\u2A700-\\u2EBEF]".toRegex(),
-                ""
-            )
+            .replace(regexA, "")
+            .replace(regexB, "")
+            .replace(regexOther, "")
     }
 
     private var bookName: String? = null
@@ -296,38 +306,36 @@ object BookHelp {
     private var replaceRules: List<ReplaceRule> = arrayListOf()
 
     @Synchronized
-    suspend fun upReplaceRules() {
-        withContext(IO) {
-            synchronized(this) {
-                val o = bookOrigin
-                bookName?.let {
-                    replaceRules = if (o.isNullOrEmpty()) {
-                        App.db.replaceRuleDao().findEnabledByScope(it)
-                    } else {
-                        App.db.replaceRuleDao().findEnabledByScope(it, o)
-                    }
-                }
+    fun upReplaceRules() {
+        val o = bookOrigin
+        bookName?.let {
+            replaceRules = if (o.isNullOrEmpty()) {
+                App.db.replaceRuleDao().findEnabledByScope(it)
+            } else {
+                App.db.replaceRuleDao().findEnabledByScope(it, o)
             }
         }
     }
 
     suspend fun disposeContent(
+        book: Book,
         title: String,
-        name: String,
-        origin: String?,
         content: String,
-        enableReplace: Boolean,
     ): List<String> {
-        var c = content
-        if (enableReplace) {
+        var title1 = title
+        var content1 = content
+        if (book.getReSegment()) {
+            content1 = ContentHelp.reSegment(content1, title1)
+        }
+        if (book.getUseReplaceRule()) {
             synchronized(this) {
-                if (bookName != name || bookOrigin != origin) {
-                    bookName = name
-                    bookOrigin = origin
-                    replaceRules = if (origin.isNullOrEmpty()) {
-                        App.db.replaceRuleDao().findEnabledByScope(name)
+                if (bookName != book.name || bookOrigin != book.origin) {
+                    bookName = book.name
+                    bookOrigin = book.origin
+                    replaceRules = if (bookOrigin.isNullOrEmpty()) {
+                        App.db.replaceRuleDao().findEnabledByScope(bookName!!)
                     } else {
-                        App.db.replaceRuleDao().findEnabledByScope(name, origin)
+                        App.db.replaceRuleDao().findEnabledByScope(bookName!!, bookOrigin!!)
                     }
                 }
             }
@@ -335,10 +343,10 @@ object BookHelp {
                 item.pattern.let {
                     if (it.isNotEmpty()) {
                         try {
-                            c = if (item.isRegex) {
-                                c.replace(it.toRegex(), item.replacement)
+                            content1 = if (item.isRegex) {
+                                content1.replace(it.toRegex(), item.replacement)
                             } else {
-                                c.replace(it, item.replacement)
+                                content1.replace(it, item.replacement)
                             }
                         } catch (e: Exception) {
                             withContext(Main) {
@@ -351,8 +359,14 @@ object BookHelp {
         }
         try {
             when (AppConfig.chineseConverterType) {
-                1 -> c = HanLP.convertToSimplifiedChinese(c)
-                2 -> c = HanLP.convertToTraditionalChinese(c)
+                1 -> {
+                    title1 = HanLP.convertToSimplifiedChinese(title1)
+                    content1 = HanLP.convertToSimplifiedChinese(content1)
+                }
+                2 -> {
+                    title1 = HanLP.convertToTraditionalChinese(title1)
+                    content1 = HanLP.convertToTraditionalChinese(content1)
+                }
             }
         } catch (e: Exception) {
             withContext(Main) {
@@ -360,11 +374,11 @@ object BookHelp {
             }
         }
         val contents = arrayListOf<String>()
-        c.split("\n").forEach {
+        content1.split("\n").forEach {
             val str = it.replace("^[\\n\\s\\r]+".toRegex(), "")
             if (contents.isEmpty()) {
-                contents.add(title)
-                if (str != title && str.isNotEmpty()) {
+                contents.add(title1)
+                if (str != title1 && str.isNotEmpty()) {
                     contents.add("${ReadBookConfig.paragraphIndent}$str")
                 }
             } else if (str.isNotEmpty()) {

@@ -26,8 +26,8 @@ import io.legado.app.lib.dialogs.*
 import io.legado.app.lib.theme.ATH
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.association.ImportReplaceRuleActivity
-import io.legado.app.ui.filechooser.FileChooserDialog
-import io.legado.app.ui.filechooser.FilePicker
+import io.legado.app.ui.filepicker.FilePicker
+import io.legado.app.ui.filepicker.FilePickerDialog
 import io.legado.app.ui.replace.edit.ReplaceEditActivity
 import io.legado.app.ui.widget.SelectActionBar
 import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
@@ -49,7 +49,8 @@ class ReplaceRuleActivity :
     VMBaseActivity<ReplaceRuleViewModel>(R.layout.activity_replace_rule),
     SearchView.OnQueryTextListener,
     PopupMenu.OnMenuItemClickListener,
-    FileChooserDialog.CallBack,
+    FilePickerDialog.CallBack,
+    SelectActionBar.CallBack,
     ReplaceRuleAdapter.CallBack {
     override val viewModel: ReplaceRuleViewModel
         get() = getViewModel(ReplaceRuleViewModel::class.java)
@@ -107,32 +108,35 @@ class ReplaceRuleActivity :
         search_view.setOnQueryTextListener(this)
     }
 
+    override fun selectAll(selectAll: Boolean) {
+        if (selectAll) {
+            adapter.selectAll()
+        } else {
+            adapter.revertSelection()
+        }
+    }
+
+    override fun revertSelection() {
+        adapter.revertSelection()
+    }
+
+    override fun onClickMainAction() {
+        delSourceDialog()
+    }
+
     private fun initSelectActionView() {
         select_action_bar.setMainActionText(R.string.delete)
         select_action_bar.inflateMenu(R.menu.replace_rule_sel)
         select_action_bar.setOnMenuItemClickListener(this)
-        select_action_bar.setCallBack(object : SelectActionBar.CallBack {
-            override fun selectAll(selectAll: Boolean) {
-                if (selectAll) {
-                    adapter.selectAll()
-                } else {
-                    adapter.revertSelection()
-                }
-            }
+        select_action_bar.setCallBack(this)
+    }
 
-            override fun revertSelection() {
-                adapter.revertSelection()
-            }
-
-            override fun onClickMainAction() {
-                this@ReplaceRuleActivity
-                    .alert(titleResource = R.string.draw, messageResource = R.string.sure_del) {
-                        okButton { viewModel.delSelection(adapter.getSelection()) }
-                        noButton { }
-                    }
-                    .show().applyTint()
-            }
-        })
+    private fun delSourceDialog() {
+        alert(titleResource = R.string.draw, messageResource = R.string.sure_del) {
+            okButton { viewModel.delSelection(adapter.getSelection()) }
+            noButton { }
+        }
+            .show().applyTint()
     }
 
     private fun observeReplaceRuleData(key: String? = null) {
@@ -241,18 +245,6 @@ class ReplaceRuleActivity :
         return false
     }
 
-    override fun onFilePicked(requestCode: Int, currentPath: String) {
-        when (requestCode) {
-            importRequestCode -> {
-                startActivity<ImportReplaceRuleActivity>("filePath" to currentPath)
-            }
-            exportRequestCode -> viewModel.exportSelection(
-                adapter.getSelection(),
-                File(currentPath)
-            )
-        }
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
@@ -270,7 +262,7 @@ class ReplaceRuleActivity :
             }
             exportRequestCode -> if (resultCode == RESULT_OK) {
                 data?.data?.let { uri ->
-                    if (uri.toString().isContentPath()) {
+                    if (uri.isContentScheme()) {
                         DocumentFile.fromTreeUri(this, uri)?.let {
                             viewModel.exportSelection(adapter.getSelection(), it)
                         }
@@ -294,27 +286,32 @@ class ReplaceRuleActivity :
     }
 
     override fun update(vararg rule: ReplaceRule) {
-        setResult(Activity.RESULT_OK)
+        setResult(RESULT_OK)
         viewModel.update(*rule)
     }
 
     override fun delete(rule: ReplaceRule) {
-        setResult(Activity.RESULT_OK)
+        setResult(RESULT_OK)
         viewModel.delete(rule)
     }
 
     override fun edit(rule: ReplaceRule) {
-        setResult(Activity.RESULT_OK)
+        setResult(RESULT_OK)
         ReplaceEditActivity.show(this, rule.id)
     }
 
     override fun toTop(rule: ReplaceRule) {
-        setResult(Activity.RESULT_OK)
+        setResult(RESULT_OK)
         viewModel.toTop(rule)
     }
 
+    override fun toBottom(rule: ReplaceRule) {
+        setResult(RESULT_OK)
+        viewModel.toBottom(rule)
+    }
+
     override fun upOrder() {
-        setResult(Activity.RESULT_OK)
+        setResult(RESULT_OK)
         viewModel.upOrder()
     }
 }

@@ -2,12 +2,12 @@ package io.legado.app.base
 
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import io.legado.app.R
@@ -34,7 +34,7 @@ abstract class BaseActivity(
 
     val isInMultiWindow: Boolean
         get() {
-            return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 isInMultiWindowMode
             } else {
                 false
@@ -63,7 +63,7 @@ abstract class BaseActivity(
         setupSystemBar()
         super.onCreate(savedInstanceState)
         setContentView(layoutID)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             findViewById<TitleBar>(R.id.title_bar)
                 ?.onMultiWindowModeChanged(isInMultiWindowMode, fullScreen)
         }
@@ -100,24 +100,19 @@ abstract class BaseActivity(
         } ?: super.onCreateOptionsMenu(menu)
     }
 
-    override fun onMenuOpened(featureId: Int, menu: Menu?): Boolean {
-        menu?.let {
-            menu.applyOpenTint(this)
-            return super.onMenuOpened(featureId, menu)
-        }
-        return true
+    override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
+        menu.applyOpenTint(this)
+        return super.onMenuOpened(featureId, menu)
     }
 
     open fun onCompatCreateOptionsMenu(menu: Menu) = super.onCreateOptionsMenu(menu)
 
-    final override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        item?.let {
-            if (it.itemId == android.R.id.home) {
-                supportFinishAfterTransition()
-                return true
-            }
+    final override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) {
+            supportFinishAfterTransition()
+            return true
         }
-        return item != null && onCompatOptionsItemSelected(item)
+        return onCompatOptionsItemSelected(item)
     }
 
     open fun onCompatOptionsItemSelected(item: MenuItem) = super.onOptionsItemSelected(item)
@@ -146,19 +141,13 @@ abstract class BaseActivity(
 
     private fun setupSystemBar() {
         if (fullScreen && !isInMultiWindow) {
-            window.clearFlags(
-                WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
-                        or WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION
-            )
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            window.decorView.systemUiVisibility =
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            ATH.fullScreen(this)
         }
         ATH.setStatusBarColorAuto(this, fullScreen)
         if (toolBarTheme == Theme.Dark) {
-            ATH.setLightStatusBar(window, false)
+            ATH.setLightStatusBar(this, false)
         } else if (toolBarTheme == Theme.Light) {
-            ATH.setLightStatusBar(window, true)
+            ATH.setLightStatusBar(this, true)
         }
         upNavigationBarColor()
     }

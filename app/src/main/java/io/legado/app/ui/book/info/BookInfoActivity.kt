@@ -51,7 +51,7 @@ class BookInfoActivity :
     ChangeCoverDialog.CallBack {
 
     private val requestCodeChapterList = 568
-    private val requestCodeSourceEdit = 562
+    private val requestCodeInfoEdit = 562
     private val requestCodeRead = 432
 
     override val viewModel: BookInfoViewModel
@@ -82,12 +82,19 @@ class BookInfoActivity :
                 if (viewModel.inBookshelf) {
                     viewModel.bookData.value?.let {
                         startActivityForResult<BookInfoEditActivity>(
-                            requestCodeSourceEdit,
+                            requestCodeInfoEdit,
                             Pair("bookUrl", it.bookUrl)
                         )
                     }
                 } else {
                     toast(R.string.after_add_bookshelf)
+                }
+            }
+            R.id.menu_share_it -> {
+                viewModel.bookData.value?.let {
+                    val bookJson = GSON.toJson(it)
+                    val shareStr = "${it.bookUrl}#$bookJson"
+                    shareWithQr(it.name, shareStr)
                 }
             }
             R.id.menu_refresh -> {
@@ -99,6 +106,9 @@ class BookInfoActivity :
                     viewModel.loadBookInfo(it, false)
                 }
             }
+            R.id.menu_copy_url -> viewModel.bookData.value?.bookUrl?.let {
+                sendToClip(it)
+            } ?: toast(R.string.no_book)
             R.id.menu_can_update -> {
                 if (viewModel.inBookshelf) {
                     viewModel.bookData.value?.let {
@@ -114,8 +124,8 @@ class BookInfoActivity :
         return super.onCompatOptionsItemSelected(item)
     }
 
-    override fun onMenuOpened(featureId: Int, menu: Menu?): Boolean {
-        menu?.findItem(R.id.menu_can_update)?.isChecked =
+    override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
+        menu.findItem(R.id.menu_can_update)?.isChecked =
             viewModel.bookData.value?.canUpdate ?: true
         return super.onMenuOpened(featureId, menu)
     }
@@ -361,7 +371,7 @@ class BookInfoActivity :
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            requestCodeSourceEdit ->
+            requestCodeInfoEdit ->
                 if (resultCode == Activity.RESULT_OK) {
                     viewModel.upEditBook()
                 }

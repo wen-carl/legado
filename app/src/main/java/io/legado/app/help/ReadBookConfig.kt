@@ -64,7 +64,7 @@ object ReadBookConfig {
                 e.printStackTrace()
             }
         }
-        (configs ?: DefaultData.defaultReadConfigs).let {
+        (configs ?: DefaultData.readConfigs).let {
             configList.clear()
             configList.addAll(it)
         }
@@ -126,7 +126,7 @@ object ReadBookConfig {
     }
 
     private fun resetAll() {
-        DefaultData.defaultReadConfigs.let {
+        DefaultData.readConfigs.let {
             configList.clear()
             configList.addAll(it)
             save()
@@ -359,6 +359,7 @@ object ReadBookConfig {
     @Keep
     @Parcelize
     class Config(
+        var name: String = "",
         var bgStr: String = "#EEEEEE",//白天背景
         var bgStrNight: String = "#000000",//夜间背景
         var bgStrEInk: String = "#FFFFFF",

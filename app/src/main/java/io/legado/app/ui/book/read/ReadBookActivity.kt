@@ -9,6 +9,7 @@ import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.view.*
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import androidx.core.view.get
@@ -92,7 +93,7 @@ class ReadBookActivity : VMBaseActivity<ReadBookViewModel>(R.layout.activity_boo
     override val scope: CoroutineScope get() = this
     override val isInitFinish: Boolean get() = viewModel.isInitFinish
     override val isScroll: Boolean get() = page_view.isScroll
-    private val mHandler = Handler()
+    private val mHandler = Handler(Looper.getMainLooper())
     private val keepScreenRunnable: Runnable =
         Runnable { ReadBookActivityHelp.keepScreenOn(window, false) }
     private val autoPageRunnable: Runnable = Runnable { autoPagePlus() }
@@ -735,7 +736,7 @@ class ReadBookActivity : VMBaseActivity<ReadBookViewModel>(R.layout.activity_boo
      * 更新状态栏,导航栏
      */
     override fun upSystemUiVisibility() {
-        ReadBookActivityHelp.upSystemUiVisibility(window, isInMultiWindow, !read_menu.isVisible)
+        ReadBookActivityHelp.upSystemUiVisibility(this, isInMultiWindow, !read_menu.isVisible)
         upNavigationBarColor()
     }
 
@@ -831,7 +832,7 @@ class ReadBookActivity : VMBaseActivity<ReadBookViewModel>(R.layout.activity_boo
                                         positions[1] + 1,
                                         positions[4]
                                     )
-                                    //todo: consider change page, jump to scroll position
+                                    //consider change page, jump to scroll position
                                     -1 -> page_view.curPage.selectEndMoveIndex(1, 0, positions[4])
                                 }
                                 page_view.isTextSelected = true

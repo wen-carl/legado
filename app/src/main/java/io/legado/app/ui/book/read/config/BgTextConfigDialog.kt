@@ -7,7 +7,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.view.*
 import androidx.documentfile.provider.DocumentFile
 import com.jaredrummler.android.colorpicker.ColorPickerDialog
@@ -18,16 +17,13 @@ import io.legado.app.help.ReadBookConfig
 import io.legado.app.help.http.HttpHelper
 import io.legado.app.help.permission.Permissions
 import io.legado.app.help.permission.PermissionsCompat
-import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.dialogs.customView
-import io.legado.app.lib.dialogs.noButton
-import io.legado.app.lib.dialogs.okButton
+import io.legado.app.lib.dialogs.*
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.ui.book.read.ReadBookActivity
-import io.legado.app.ui.filechooser.FileChooserDialog
-import io.legado.app.ui.filechooser.FilePicker
+import io.legado.app.ui.filepicker.FilePicker
+import io.legado.app.ui.filepicker.FilePickerDialog
 import io.legado.app.ui.widget.text.AutoCompleteTextView
 import io.legado.app.utils.*
 import kotlinx.android.synthetic.main.dialog_edit_text.view.*
@@ -37,7 +33,7 @@ import org.jetbrains.anko.sdk27.listeners.onCheckedChange
 import org.jetbrains.anko.sdk27.listeners.onClick
 import java.io.File
 
-class BgTextConfigDialog : BaseDialogFragment(), FileChooserDialog.CallBack {
+class BgTextConfigDialog : BaseDialogFragment(), FilePickerDialog.CallBack {
 
     companion object {
         const val TEXT_COLOR = 121
@@ -54,10 +50,6 @@ class BgTextConfigDialog : BaseDialogFragment(), FileChooserDialog.CallBack {
 
     override fun onStart() {
         super.onStart()
-        val dm = DisplayMetrics()
-        activity?.let {
-            it.windowManager?.defaultDisplay?.getMetrics(dm)
-        }
         dialog?.window?.let {
             it.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             it.setBackgroundDrawableResource(R.color.background)
@@ -104,6 +96,7 @@ class BgTextConfigDialog : BaseDialogFragment(), FileChooserDialog.CallBack {
 
     @SuppressLint("InflateParams")
     private fun initData() = with(ReadBookConfig.durConfig) {
+        tv_name.text = name.ifBlank { "文字" }
         sw_dark_status_icon.isChecked = curStatusIconDark()
         adapter = BgAdapter(requireContext(), secondaryTextColor)
         recycler_view.adapter = adapter
@@ -115,12 +108,31 @@ class BgTextConfigDialog : BaseDialogFragment(), FileChooserDialog.CallBack {
         headerView.iv_bg.setImageResource(R.drawable.ic_image)
         headerView.iv_bg.setColorFilter(primaryTextColor)
         headerView.onClick { selectImage() }
-        requireContext().assets.list("bg${File.separator}")?.let {
+        requireContext().assets.list("bg")?.let {
             adapter.setItems(it.toList())
         }
     }
 
+    @SuppressLint("InflateParams")
     private fun initEvent() = with(ReadBookConfig.durConfig) {
+        iv_edit.onClick {
+            alert(R.string.style_name) {
+                var editText: AutoCompleteTextView? = null
+                customView {
+                    layoutInflater.inflate(R.layout.dialog_edit_text, null).apply {
+                        edit_view.setText(ReadBookConfig.durConfig.name)
+                        editText = edit_view
+                    }
+                }
+                okButton {
+                    editText?.text?.toString()?.let {
+                        tv_name.text = it
+                        ReadBookConfig.durConfig.name = it
+                    }
+                }
+                cancelButton()
+            }.show().applyTint()
+        }
         sw_dark_status_icon.onCheckedChange { buttonView, isChecked ->
             if (buttonView?.isPressed == true) {
                 setCurStatusIconDark(isChecked)
@@ -236,7 +248,7 @@ class BgTextConfigDialog : BaseDialogFragment(), FileChooserDialog.CallBack {
             }
             val configZipPath = FileUtils.getPath(requireContext().eCacheDir, configFileName)
             if (ZipUtils.zipFiles(exportFiles, File(configZipPath))) {
-                if (uri.isContentPath()) {
+                if (uri.isContentScheme()) {
                     DocumentFile.fromTreeUri(requireContext(), uri)?.let { treeDoc ->
                         treeDoc.findFile(configFileName)?.delete()
                         treeDoc.createFile("", configFileName)
@@ -357,13 +369,6 @@ class BgTextConfigDialog : BaseDialogFragment(), FileChooserDialog.CallBack {
         }
     }
 
-    override fun onFilePicked(requestCode: Int, currentPath: String) {
-        when (requestCode) {
-            requestCodeImport -> importConfig(Uri.fromFile(File(currentPath)))
-            requestCodeExport -> exportConfig(Uri.fromFile(File(currentPath)))
-        }
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
@@ -386,7 +391,7 @@ class BgTextConfigDialog : BaseDialogFragment(), FileChooserDialog.CallBack {
     }
 
     private fun setBgFromUri(uri: Uri) {
-        if (uri.toString().isContentPath()) {
+        if (uri.toString().isContentScheme()) {
             val doc = DocumentFile.fromSingleUri(requireContext(), uri)
             doc?.name?.let {
                 val file =

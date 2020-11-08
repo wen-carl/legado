@@ -73,7 +73,7 @@ object Restore {
 
     suspend fun restore(context: Context, path: String) {
         withContext(IO) {
-            if (path.isContentPath()) {
+            if (path.isContentScheme()) {
                 DocumentFile.fromTreeUri(context, Uri.parse(path))?.listFiles()?.forEach { doc ->
                     for (fileName in Backup.backupFileNames) {
                         if (doc.name == fileName) {
@@ -128,6 +128,9 @@ object Restore {
             }
             fileToListT<ReplaceRule>(path, "replaceRule.json")?.let {
                 App.db.replaceRuleDao().insert(*it.toTypedArray())
+            }
+            fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
+                App.db.searchKeywordDao().insert(*it.toTypedArray())
             }
             fileToListT<TxtTocRule>(path, DefaultData.txtTocRuleFileName)?.let {
                 App.db.txtTocRule().insert(*it.toTypedArray())

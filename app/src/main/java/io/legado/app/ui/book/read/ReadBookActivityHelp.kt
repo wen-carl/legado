@@ -4,12 +4,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
-import android.os.AsyncTask
 import android.os.Build
-import android.view.LayoutInflater
-import android.view.View
-import android.view.Window
-import android.view.WindowManager
+import android.view.*
 import android.widget.EditText
 import io.legado.app.App
 import io.legado.app.R
@@ -17,6 +13,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.help.AppConfig
 import io.legado.app.help.ReadBookConfig
+import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.dialogs.*
 import io.legado.app.lib.theme.ATH
 import io.legado.app.lib.theme.ThemeStore
@@ -38,7 +35,39 @@ object ReadBookActivityHelp {
      * 更新状态栏,导航栏
      */
     fun upSystemUiVisibility(
-        window: Window,
+        activity: Activity,
+        isInMultiWindow: Boolean,
+        toolBarHide: Boolean = true
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            activity.window.insetsController?.let {
+                if (toolBarHide) {
+                    if (ReadBookConfig.hideStatusBar) {
+                        it.hide(WindowInsets.Type.statusBars())
+                    }
+                    if (ReadBookConfig.hideNavigationBar) {
+                        it.hide(WindowInsets.Type.navigationBars())
+                    }
+                } else {
+                    it.show(WindowInsets.Type.statusBars())
+                    it.show(WindowInsets.Type.navigationBars())
+                }
+            }
+        }
+        upSystemUiVisibilityO(activity, isInMultiWindow, toolBarHide)
+        if (toolBarHide) {
+            ATH.setLightStatusBar(activity, ReadBookConfig.durConfig.curStatusIconDark())
+        } else {
+            ATH.setLightStatusBarAuto(
+                activity,
+                ThemeStore.statusBarColor(activity, AppConfig.isTransparentStatusBar)
+            )
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun upSystemUiVisibilityO(
+        activity: Activity,
         isInMultiWindow: Boolean,
         toolBarHide: Boolean = true
     ) {
@@ -59,15 +88,7 @@ object ReadBookActivityHelp {
                 flag = flag or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             }
         }
-        window.decorView.systemUiVisibility = flag
-        if (toolBarHide) {
-            ATH.setLightStatusBar(window, ReadBookConfig.durConfig.curStatusIconDark())
-        } else {
-            ATH.setLightStatusBarAuto(
-                window,
-                ThemeStore.statusBarColor(App.INSTANCE, AppConfig.isTransparentStatusBar)
-            )
-        }
+        activity.window.decorView.systemUiVisibility = flag
     }
 
     /**
@@ -149,7 +170,7 @@ object ReadBookActivityHelp {
             }
             yesButton {
                 editText?.text?.toString()?.let { editContent ->
-                    AsyncTask.execute {
+                    Coroutine.async {
                         val bookmark = Bookmark(
                             bookUrl = book.bookUrl,
                             bookName = book.name,

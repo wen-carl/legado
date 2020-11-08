@@ -1,7 +1,6 @@
 package io.legado.app.ui.book.changesource
 
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -17,10 +16,11 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.help.AppConfig
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyTint
-import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.getSize
 import io.legado.app.utils.getViewModel
 import io.legado.app.utils.putPrefBoolean
 import kotlinx.android.synthetic.main.dialog_change_source.*
@@ -51,8 +51,7 @@ class ChangeSourceDialog : BaseDialogFragment(),
 
     override fun onStart() {
         super.onStart()
-        val dm = DisplayMetrics()
-        activity?.windowManager?.defaultDisplay?.getMetrics(dm)
+        val dm = requireActivity().getSize()
         dialog?.window?.setLayout((dm.widthPixels * 0.9).toInt(), (dm.heightPixels * 0.9).toInt())
     }
 
@@ -86,10 +85,8 @@ class ChangeSourceDialog : BaseDialogFragment(),
         tool_bar.inflateMenu(R.menu.change_source)
         tool_bar.menu.applyTint(requireContext())
         tool_bar.setOnMenuItemClickListener(this)
-        tool_bar.menu.findItem(R.id.menu_load_toc)?.isChecked =
-            getPrefBoolean(PreferKey.changeSourceLoadToc)
-        tool_bar.menu.findItem(R.id.menu_load_info)?.isChecked =
-            getPrefBoolean(PreferKey.changeSourceLoadInfo)
+        tool_bar.menu.findItem(R.id.menu_load_info)?.isChecked = AppConfig.changeSourceLoadInfo
+        tool_bar.menu.findItem(R.id.menu_load_toc)?.isChecked = AppConfig.changeSourceLoadToc
     }
 
     private fun initRecyclerView() {

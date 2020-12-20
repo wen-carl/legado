@@ -4,30 +4,32 @@ import android.os.Bundle
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.Theme
+import io.legado.app.databinding.ActivityTranslucenceBinding
 import io.legado.app.help.IntentDataHelp
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.dialogs.okButton
-import io.legado.app.utils.applyTint
 import io.legado.app.utils.getViewModel
-import kotlinx.android.synthetic.main.activity_translucence.*
 import org.jetbrains.anko.toast
 
-class ImportRssSourceActivity : VMBaseActivity<ImportRssSourceViewModel>(
-    R.layout.activity_translucence,
-    theme = Theme.Transparent
-) {
+class ImportRssSourceActivity :
+    VMBaseActivity<ActivityTranslucenceBinding, ImportRssSourceViewModel>(
+        theme = Theme.Transparent
+    ) {
+
+    override fun getViewBinding(): ActivityTranslucenceBinding {
+        return ActivityTranslucenceBinding.inflate(layoutInflater)
+    }
 
     override val viewModel: ImportRssSourceViewModel
         get() = getViewModel(ImportRssSourceViewModel::class.java)
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        rotate_loading.show()
+        binding.rotateLoading.show()
         viewModel.errorLiveData.observe(this, {
-            rotate_loading.hide()
+            binding.rotateLoading.hide()
             errorDialog(it)
         })
         viewModel.successLiveData.observe(this, {
-            rotate_loading.hide()
+            binding.rotateLoading.hide()
             if (it > 0) {
                 successDialog()
             } else {
@@ -62,7 +64,7 @@ class ImportRssSourceActivity : VMBaseActivity<ImportRssSourceViewModel>(
                     }
                 }
                 else -> {
-                    rotate_loading.hide()
+                    binding.rotateLoading.hide()
                     toast(R.string.wrong_format)
                     finish()
                 }
@@ -73,13 +75,14 @@ class ImportRssSourceActivity : VMBaseActivity<ImportRssSourceViewModel>(
     private fun errorDialog(msg: String) {
         alert(getString(R.string.error), msg) {
             okButton { }
-        }.show().applyTint().setOnDismissListener {
-            finish()
-        }
+            onDismiss {
+                finish()
+            }
+        }.show()
     }
 
     private fun successDialog() {
-        ImportRssSourcesDialog().show(supportFragmentManager, "SourceDialog")
+        ImportRssSourceDialog().show(supportFragmentManager, "SourceDialog")
     }
 
 }

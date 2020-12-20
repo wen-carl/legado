@@ -24,7 +24,6 @@ import io.legado.app.help.AppConfig
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dp
 import io.legado.app.utils.getCompatColor
-import kotlinx.android.synthetic.main.activity_main.view.*
 import org.jetbrains.anko.backgroundColor
 
 
@@ -124,12 +123,10 @@ object ATH {
 
     fun setNavigationBarColorAuto(
         activity: Activity,
-        color: Int = ThemeStore.navigationBarColor(activity)
+        color: Int,
     ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            activity.window.navigationBarColor = color
-            setLightNavigationBar(activity, ColorUtils.isColorLight(color))
-        }
+        activity.window.navigationBarColor = color
+        setLightNavigationBar(activity, ColorUtils.isColorLight(color))
     }
 
     fun setLightNavigationBar(activity: Activity, enabled: Boolean) {
@@ -170,18 +167,15 @@ object ATH {
     }
 
     fun setTaskDescriptionColor(activity: Activity, @ColorInt color: Int) {
-        val color1: Int
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            color1 = ColorUtils.stripAlpha(color)
-            @Suppress("DEPRECATION")
-            activity.setTaskDescription(
-                ActivityManager.TaskDescription(
-                    activity.title as String,
-                    null,
-                    color1
-                )
+        val color1: Int = ColorUtils.stripAlpha(color)
+        @Suppress("DEPRECATION")
+        activity.setTaskDescription(
+            ActivityManager.TaskDescription(
+                activity.title as String,
+                null,
+                color1
             )
-        }
+        )
     }
 
     fun setTint(
@@ -263,7 +257,7 @@ object ATH {
             val textColor = context.getSecondaryTextColor(textIsDark)
             val colorStateList = Selector.colorBuild()
                 .setDefaultColor(textColor)
-                .setSelectedColor(ThemeStore.accentColor(bottom_navigation_view.context)).create()
+                .setSelectedColor(ThemeStore.accentColor(context)).create()
             itemIconTintList = colorStateList
             itemTextColor = colorStateList
         }

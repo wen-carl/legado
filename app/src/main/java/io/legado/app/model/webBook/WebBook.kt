@@ -22,12 +22,11 @@ class WebBook(val bookSource: BookSource) {
     fun searchBook(
         key: String,
         page: Int? = 1,
-        variableBook: SearchBook,
         scope: CoroutineScope = Coroutine.DEFAULT,
         context: CoroutineContext = Dispatchers.IO,
     ): Coroutine<ArrayList<SearchBook>> {
         return Coroutine.async(scope, context) {
-            searchBookSuspend(scope, key, page, variableBook)
+            searchBookSuspend(scope, key, page)
         }
     }
 
@@ -35,8 +34,8 @@ class WebBook(val bookSource: BookSource) {
         scope: CoroutineScope,
         key: String,
         page: Int? = 1,
-        variableBook: SearchBook,
     ): ArrayList<SearchBook> {
+        val variableBook = SearchBook()
         bookSource.searchUrl?.let { searchUrl ->
             val analyzeUrl = AnalyzeUrl(
                 ruleUrl = searchUrl,
@@ -46,7 +45,7 @@ class WebBook(val bookSource: BookSource) {
                 headerMapF = bookSource.getHeaderMap(),
                 book = variableBook
             )
-            val res = analyzeUrl.getResponseAwait(bookSource.bookSourceUrl)
+            val res = analyzeUrl.getStrResponse(bookSource.bookSourceUrl)
             return BookList.analyzeBookList(
                 scope,
                 res.body,
@@ -66,18 +65,19 @@ class WebBook(val bookSource: BookSource) {
     fun exploreBook(
         url: String,
         page: Int? = 1,
-        variableBook: SearchBook,
         scope: CoroutineScope = Coroutine.DEFAULT,
         context: CoroutineContext = Dispatchers.IO,
     ): Coroutine<List<SearchBook>> {
+        val variableBook = SearchBook()
         return Coroutine.async(scope, context) {
             val analyzeUrl = AnalyzeUrl(
                 ruleUrl = url,
                 page = page,
                 baseUrl = sourceUrl,
+                book = variableBook,
                 headerMapF = bookSource.getHeaderMap()
             )
-            val res = analyzeUrl.getResponseAwait(bookSource.bookSourceUrl)
+            val res = analyzeUrl.getStrResponse(bookSource.bookSourceUrl)
             BookList.analyzeBookList(
                 scope,
                 res.body,
@@ -110,8 +110,8 @@ class WebBook(val bookSource: BookSource) {
                     baseUrl = sourceUrl,
                     headerMapF = bookSource.getHeaderMap(),
                     book = book
-                ).getResponseAwait(bookSource.bookSourceUrl)
-                BookInfo.analyzeBookInfo(book, res.body, bookSource, res.url, canReName)
+                ).getStrResponse(bookSource.bookSourceUrl)
+                BookInfo.analyzeBookInfo(book, res.body, bookSource, book.bookUrl, canReName)
             }
             book
         }
@@ -141,12 +141,13 @@ class WebBook(val bookSource: BookSource) {
                     ruleUrl = book.tocUrl,
                     baseUrl = book.bookUrl,
                     headerMapF = bookSource.getHeaderMap()
-                ).getResponseAwait(bookSource.bookSourceUrl)
+                ).getStrResponse(bookSource.bookSourceUrl)
                 BookChapterList.analyzeChapterList(
                     this,
-                    book, res.body,
+                    book,
+                    res.body,
                     bookSource,
-                    res.url
+                    book.tocUrl
                 )
             }
 
@@ -200,7 +201,7 @@ class WebBook(val bookSource: BookSource) {
                 headerMapF = bookSource.getHeaderMap(),
                 book = book,
                 chapter = bookChapter
-            ).getResponseAwait(
+            ).getStrResponse(
                 bookSource.bookSourceUrl,
                 jsStr = bookSource.getContentRule().webJs,
                 sourceRegex = bookSource.getContentRule().sourceRegex
@@ -211,7 +212,7 @@ class WebBook(val bookSource: BookSource) {
                 book,
                 bookChapter,
                 bookSource,
-                res.url,
+                bookChapter.getAbsoluteURL(),
                 nextChapterUrl
             )
         }

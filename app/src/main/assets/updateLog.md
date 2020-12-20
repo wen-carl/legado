@@ -1,10 +1,101 @@
 # 更新日志
-* 关注公众号 **[开源阅读]()** 菜单•软件下载 提前享受新版本。
-* 关注合作公众号 **[小说拾遗]()** 获取好看的小说。
+* 关注公众号 **[开源阅读]** 菜单•软件下载 提前享受新版本。
+* 关注合作公众号 **[小说拾遗]** 获取好看的小说。
 * 旧版数据导入教程：先在旧版阅读(2.x)中进行备份，然后在新版阅读(3.x)【我的】->【备份与恢复】，选择【导入旧版本数据】。
+
+**2020/12/19**
+* 书签转移到文本菜单里,会记录选择的文本和位置
+* 订阅源添加单url选项,直接打开url
+* 订阅源可以put,get数据
+
+**2020/12/17**
+* 继续修复bug
+
+**2020/12/16**
+* 修复上版本因更新组件引起的一些bug
+* 搜索一点都不闪了
+
+**2020/12/15**
+* 修复一些引起崩溃的bug
+* 修复搜书和换源可能什么分组都没有的bug
+* 添加同步进度开关,默认开启,在备份与恢复里面
+
+**2020/12/14**
+* 修复bug
+* 电池图标不允许改字体
+* 升级js库
+
+**2020/12/13**
+* 修复bug
+* 网络访问框架修改为RxHttp, 有bug及时反馈
+* 优化进度同步
+* 换源界面添加分组选择
+* 沉浸模式时阅读界面导航栏透明
+
+**2020/12/11**
+* 修复因修改进度同步导致的bug
+
+**2020/12/09**
+* 修复bug
+* 优化中文排序
+* 优化编码识别
+* 选择文字时优先选词
+* 优化进度同步,进入书籍时同步,每次同步单本书,减少同步文件大小
+
+**2020/12/06**
+* 添加规则订阅功能,订阅界面第一个图标,可以订阅书源/订阅源/替换规则
+
+**2020/12/04**
+* 阅读进度从页数改为字数,排版变化时定位更准确
+* 修改viewBinding
+* 修复中文排序
+* 去掉FontJs规则,可以写在替换规则里,例:f2为正确的字体,根据文字数据去正确的字体里面查找,可以把错误的文字替换为正确的文字
+```
+@js:
+var b64=String(src).match(/ttf;base64,([^\)]+)/);
+if (b64) {
+    var f1 = java.queryBase64TTF(b64[1])
+    var f2 = java.queryTTF("/storage/emulated/0/Fonts/Source Han Sans CN Regular.ttf")
+    java.replaceFont(result, f1, f2)
+}else{
+    result
+}
+```
+
+**2020/11/30**
+* 优化阅读界面设置
+* 阅读界面显示信息添加时间及电量
+* 阅读界面显示信息可以自定义颜色
+* 修复bug
+
+**2020/11/24**
+* 修复音频bug
+
+**2020/11/18**
+* 优化导航栏
+* js添加java.log(msg: String)用于调试时输出消息
+* js添加cookie变量,方法见io.legado.app.help.http.api.CookieManager
+* js添加cache变量,可以用来存储token之类的临时值,可以设置保存时间,方法见io.legado.app.help.CacheManager
+* 需要token的网站可以用js来写了,比如阿里tts
+
+**2020/11/16**
+* 修复导出添加替换净化引起的bug
+
+**2020/11/15**
+* 正文规则添加字体规则,返回ByteArray
+* js添加方法:
+```
+base64DecodeToByteArray(str: String?): ByteArray?
+base64DecodeToByteArray(str: String?, flags: Int): ByteArray?
+```
+* 导出添加替换净化
+* 修复正文内容TalkBack不对的bug,优化视障使用体验
 
 **2020/11/08**
 * 优化书源,订阅源导入,添加保持原名选项
+* 优化使用体验,初次使用是自动弹出帮助文档
+* 添加阅读界面的点击区域设置
+* 滚动翻页时自动翻页也采用滚动模式
 
 **2020/11/07**
 * 详情页菜单添加拷贝URL
@@ -183,39 +274,3 @@ getTxtInFolder(unzipPath: String): String
 * 修复滑动选择,选择数量不更新的bug
 * 字体跟随背景,每个背景对应一个字体
 * 优化图片下载
-
-**功能介绍**
-* 书源调试
-  - 调试搜索>>输入关键字，如：`系统`
-  - 调试发现>>输入发现URL，如：`月票榜::https://www.qidian.com/rank/yuepiao?page={{page}}`
-  - 调试详情页>>输入详情页URL，如：`https://m.qidian.com/book/1015609210`
-  - 调试目录页>>输入目录页URL，如：`++https://www.zhaishuyuan.com/read/30394`
-  - 调试正文页>>输入正文页URL，如：`--https://www.zhaishuyuan.com/chapter/30394/20940996`
-* 修改订阅中自动添加style的情景
-  订阅源的内容规则中存在`<style>`或`style=`时，直接显示内容规则的原始内容
-* 请求头,支持http代理,socks4 socks5代理设置 by [10bits](https://github.com/10bits)
-```
-socks5代理
-{
-  "proxy":"socks5://127.0.0.1:1080"
-}
-http代理
-{
-  "proxy":"http://127.0.0.1:1080"
-}
-支持代理服务器验证
-{
-  "proxy":"socks5://127.0.0.1:1080@用户名@密码"
-}
-注意:这些请求头是无意义的,会被忽略掉
-```
-* 对于搜索重定向的源，可以使用此方法获得重定向后的url
-```
-<js>
-var url='https://www.yooread.net/e/search/index.php,'+JSON.stringify({
-"method":"POST",
-"body":"show=title&tempid=1&keyboard="+key
-});
-String(java.connect(url).raw().request().url())
-</js>
-```

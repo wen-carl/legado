@@ -15,6 +15,7 @@ import io.legado.app.App
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.PreferKey
+import io.legado.app.databinding.DialogFontSelectBinding
 import io.legado.app.help.AppConfig
 import io.legado.app.help.permission.Permissions
 import io.legado.app.help.permission.PermissionsCompat
@@ -23,11 +24,12 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.filepicker.FilePicker
 import io.legado.app.ui.filepicker.FilePickerDialog
 import io.legado.app.utils.*
-import kotlinx.android.synthetic.main.dialog_font_select.*
+import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
+import kotlin.collections.ArrayList
 
 class FontSelectDialog : BaseDialogFragment(),
     FilePickerDialog.CallBack,
@@ -39,6 +41,7 @@ class FontSelectDialog : BaseDialogFragment(),
         FileUtils.createFolderIfNotExist(App.INSTANCE.filesDir, "Fonts")
     }
     private var adapter: FontAdapter? = null
+    private val binding by viewBinding(DialogFontSelectBinding::bind)
 
     override fun onStart() {
         super.onStart()
@@ -55,14 +58,14 @@ class FontSelectDialog : BaseDialogFragment(),
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        tool_bar.setBackgroundColor(primaryColor)
-        tool_bar.setTitle(R.string.select_font)
-        tool_bar.inflateMenu(R.menu.font_select)
-        tool_bar.menu.applyTint(requireContext())
-        tool_bar.setOnMenuItemClickListener(this)
+        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setTitle(R.string.select_font)
+        binding.toolBar.inflateMenu(R.menu.font_select)
+        binding.toolBar.menu.applyTint(requireContext())
+        binding.toolBar.setOnMenuItemClickListener(this)
         adapter = FontAdapter(requireContext(), this)
-        recycler_view.layoutManager = LinearLayoutManager(context)
-        recycler_view.adapter = adapter
+        binding.recyclerView.layoutManager = LinearLayoutManager(context)
+        binding.recyclerView.adapter = adapter
 
         val fontPath = getPrefString(PreferKey.fontFolder)
         if (fontPath.isNullOrEmpty()) {
@@ -150,8 +153,7 @@ class FontSelectDialog : BaseDialogFragment(),
                     fontItems.add(item)
                 }
             }
-            fontItems.addAll(getLocalFonts())
-            fontItems.sortedBy { it.name }
+            mergeFontItems(fontItems, getLocalFonts())
         }.onSuccess {
             adapter?.setItems(it)
         }.onError {
@@ -186,12 +188,33 @@ class FontSelectDialog : BaseDialogFragment(),
                     )
                 )
             }
-            fontItems.addAll(getLocalFonts())
-            fontItems.sortedBy { it.name }
+            mergeFontItems(fontItems, getLocalFonts())
         }.onSuccess {
             adapter?.setItems(it)
         }.onError {
             toast("getFontFiles:${it.localizedMessage}")
+        }
+    }
+
+    private fun mergeFontItems(
+        items1: ArrayList<DocItem>,
+        items2: ArrayList<DocItem>
+    ): List<DocItem> {
+        val items = ArrayList(items1)
+        items2.forEach { item2 ->
+            var isInFirst = false
+            items1.forEach for1@{ item1 ->
+                if (item2.name == item1.name) {
+                    isInFirst = true
+                    return@for1
+                }
+            }
+            if (!isInFirst) {
+                items.add(item2)
+            }
+        }
+        return items.sortedWith { o1, o2 ->
+            o1.name.cnCompare(o2.name)
         }
     }
 

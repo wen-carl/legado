@@ -39,7 +39,7 @@ object PreferKey {
     const val webDavAccount = "web_dav_account"
     const val webDavPassword = "web_dav_password"
     const val webDavCreateDir = "webDavCreateDir"
-    const val webDavCacheBackup = "webDavCacheBackup"
+    const val exportToWebDav = "webDavCacheBackup"
     const val changeSourceLoadToc = "changeSourceLoadToc"
     const val changeSourceLoadInfo = "changeSourceLoadInfo"
     const val chineseConverterType = "chineseConverterType"
@@ -64,15 +64,23 @@ object PreferKey {
     const val importKeepName = "importKeepName"
     const val screenOrientation = "screenOrientation"
     const val syncBookProgress = "syncBookProgress"
+    const val preDownload = "preDownload"
+    const val autoRefresh = "auto_refresh"
+    const val defaultToRead = "defaultToRead"
+    const val exportCharset = "exportCharset"
+    const val exportUseReplace = "exportUseReplace"
+    const val useZhLayout = "useZhLayout"
 
     const val cPrimary = "colorPrimary"
     const val cAccent = "colorAccent"
     const val cBackground = "colorBackground"
     const val cBBackground = "colorBottomBackground"
+    const val bgImage = "backgroundImage"
 
     const val cNPrimary = "colorPrimaryNight"
     const val cNAccent = "colorAccentNight"
     const val cNBackground = "colorBackgroundNight"
     const val cNBBackground = "colorBottomBackgroundNight"
+    const val bgImageN = "backgroundImageNight"
 
 }

@@ -7,15 +7,16 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.SubMenu
+import androidx.activity.viewModels
 import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.SearchView
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LiveData
 import androidx.recyclerview.widget.ItemTouchHelper
-import io.legado.app.App
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.AppPattern
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.RssSource
 import io.legado.app.databinding.ActivityRssSourceBinding
 import io.legado.app.databinding.DialogEditTextBinding
@@ -34,9 +35,6 @@ import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.*
-import org.jetbrains.anko.startActivity
-import org.jetbrains.anko.startActivityForResult
-import org.jetbrains.anko.toast
 import java.io.File
 
 
@@ -47,7 +45,7 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
     RssSourceAdapter.CallBack {
 
     override val viewModel: RssSourceViewModel
-        get() = getViewModel(RssSourceViewModel::class.java)
+            by viewModels()
     private val importRecordKey = "rssSourceRecordKey"
     private val qrRequestCode = 101
     private val importRequestCode = 124
@@ -92,10 +90,11 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
             R.id.menu_share_source -> viewModel.shareSelection(adapter.getSelection()) {
                 startActivity(Intent.createChooser(it, getString(R.string.share_selected_source)))
             }
+            R.id.menu_import_default -> viewModel.importDefault()
             R.id.menu_help -> showHelp()
             else -> if (item.groupId == R.id.source_group) {
                 binding.titleBar.findViewById<SearchView>(R.id.search_view)
-                    .setQuery(item.title, true)
+                    .setQuery("group:${item.title}", true)
             }
         }
         return super.onCompatOptionsItemSelected(item)
@@ -149,7 +148,7 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
     }
 
     private fun initLiveDataGroup() {
-        App.db.rssSourceDao.liveGroup().observe(this, {
+        appDb.rssSourceDao.liveGroup().observe(this, {
             groups.clear()
             it.map { group ->
                 groups.addAll(group.splitNotBlank(AppPattern.splitGroupRegex))
@@ -197,17 +196,24 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
         }
     }
 
-    private fun initLiveDataSource(key: String? = null) {
+    private fun initLiveDataSource(searchKey: String? = null) {
         sourceLiveData?.removeObservers(this)
-        sourceLiveData =
-            if (key.isNullOrBlank()) {
-                App.db.rssSourceDao.liveAll()
-            } else {
-                App.db.rssSourceDao.liveSearch("%$key%")
+        sourceLiveData = when {
+            searchKey.isNullOrBlank() -> {
+                appDb.rssSourceDao.liveAll()
             }
-        sourceLiveData?.observe(this, {
-            adapter.setItems(it, adapter.diffItemCallback)
-        })
+            searchKey.startsWith("group:") -> {
+                val key = searchKey.substringAfter("group:")
+                appDb.rssSourceDao.liveGroupSearch("%$key%")
+            }
+            else -> {
+                appDb.rssSourceDao.liveSearch("%$searchKey%")
+            }
+        }.apply {
+            observe(this@RssSourceActivity, {
+                adapter.setItems(it, adapter.diffItemCallback)
+            })
+        }
     }
 
     private fun showHelp() {
@@ -237,7 +243,7 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
                     aCache.put(importRecordKey, cacheUrls.joinToString(","))
                 }
             }
-            customView = alertBinding.root
+            customView { alertBinding.root }
             okButton {
                 val text = alertBinding.editView.text?.toString()
                 text?.let {
@@ -245,7 +251,9 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
                         cacheUrls.add(0, it)
                         aCache.put(importRecordKey, cacheUrls.joinToString(","))
                     }
-                    startActivity<ImportRssSourceActivity>("source" to it)
+                    startActivity<ImportRssSourceActivity> {
+                        putExtra("source", it)
+                    }
                 }
             }
             cancelButton()
@@ -257,19 +265,23 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
         when (requestCode) {
             importRequestCode -> if (resultCode == Activity.RESULT_OK) {
                 data?.data?.let { uri ->
-                    try {
+                    kotlin.runCatching {
                         uri.readText(this)?.let {
                             val dataKey = IntentDataHelp.putData(it)
-                            startActivity<ImportRssSourceActivity>("dataKey" to dataKey)
+                            startActivity<ImportRssSourceActivity> {
+                                putExtra("dataKey", dataKey)
+                            }
                         }
-                    } catch (e: Exception) {
-                        toast("readTextError:${e.localizedMessage}")
+                    }.onFailure {
+                        toastOnUi("readTextError:${it.localizedMessage}")
                     }
                 }
             }
             qrRequestCode -> if (resultCode == RESULT_OK) {
                 data?.getStringExtra("result")?.let {
-                    startActivity<ImportRssSourceActivity>("source" to it)
+                    startActivity<ImportRssSourceActivity> {
+                        putExtra("source", it)
+                    }
                 }
             }
             exportRequestCode -> if (resultCode == RESULT_OK) {
@@ -293,7 +305,9 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
     }
 
     override fun edit(source: RssSource) {
-        startActivity<RssSourceEditActivity>(Pair("data", source.sourceUrl))
+        startActivity<RssSourceEditActivity> {
+            putExtra("data", source.sourceUrl)
+        }
     }
 
     override fun update(vararg source: RssSource) {

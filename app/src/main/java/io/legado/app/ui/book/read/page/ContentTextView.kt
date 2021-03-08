@@ -113,19 +113,15 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         val lineTop = textLine.lineTop + relativeOffset
         val lineBase = textLine.lineBase + relativeOffset
         val lineBottom = textLine.lineBottom + relativeOffset
-        if (textLine.isImage) {
-            drawImage(canvas, textLine, lineTop, lineBottom)
-        } else {
-            drawChars(
-                canvas,
-                textLine.textChars,
-                lineTop,
-                lineBase,
-                lineBottom,
-                isTitle = textLine.isTitle,
-                isReadAloud = textLine.isReadAloud
-            )
-        }
+        drawChars(
+            canvas,
+            textLine.textChars,
+            lineTop,
+            lineBase,
+            lineBottom,
+            isTitle = textLine.isTitle,
+            isReadAloud = textLine.isReadAloud
+        )
     }
 
     /**
@@ -148,7 +144,11 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         textPaint.color =
             if (isReadAloud) context.accentColor else ReadBookConfig.textColor
         textChars.forEach {
-            canvas.drawText(it.charData, it.start, lineBase, textPaint)
+            if (it.isImage) {
+                drawImage(canvas, it, lineTop, lineBottom)
+            } else {
+                canvas.drawText(it.charData, it.start, lineBase, textPaint)
+            }
             if (it.selected) {
                 canvas.drawRect(it.start, lineTop, it.end, lineBottom, selectedPaint)
             }
@@ -160,18 +160,16 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
      */
     private fun drawImage(
         canvas: Canvas,
-        textLine: TextLine,
+        textChar: TextChar,
         lineTop: Float,
         lineBottom: Float,
     ) {
-        textLine.textChars.forEach { textChar ->
-            ReadBook.book?.let { book ->
-                val rectF = RectF(textChar.start, lineTop, textChar.end, lineBottom)
-                ImageProvider.getImage(book, textPage.chapterIndex, textChar.charData, true)
-                    ?.let {
-                        canvas.drawBitmap(it, null, rectF, null)
-                    }
-            }
+        ReadBook.book?.let { book ->
+            val rectF = RectF(textChar.start, lineTop, textChar.end, lineBottom)
+            ImageProvider.getImage(book, textPage.chapterIndex, textChar.charData, true)
+                ?.let {
+                    canvas.drawBitmap(it, null, rectF, null)
+                }
         }
     }
 
@@ -347,8 +345,8 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         selectStart[0] = relativePage
         selectStart[1] = lineIndex
         selectStart[2] = charIndex
-        val textLine = relativePage(relativePage).textLines[lineIndex]
-        val textChar = textLine.textChars[charIndex]
+        val textLine = relativePage(relativePage).getLine(lineIndex)
+        val textChar = textLine.getTextChar(charIndex)
         upSelectedStart(
             textChar.start,
             textLine.lineBottom + relativeOffset(relativePage),
@@ -364,8 +362,8 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         selectEnd[0] = relativePage
         selectEnd[1] = lineIndex
         selectEnd[2] = charIndex
-        val textLine = relativePage(relativePage).textLines[lineIndex]
-        val textChar = textLine.textChars[charIndex]
+        val textLine = relativePage(relativePage).getLine(lineIndex)
+        val textChar = textLine.getTextChar(charIndex)
         upSelectedEnd(textChar.end, textLine.lineBottom + relativeOffset(relativePage))
         upSelectChars()
     }

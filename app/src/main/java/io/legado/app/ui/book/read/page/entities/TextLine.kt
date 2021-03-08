@@ -12,8 +12,8 @@ data class TextLine(
     var lineBase: Float = 0f,
     var lineBottom: Float = 0f,
     val isTitle: Boolean = false,
-    val isImage: Boolean = false,
-    var isReadAloud: Boolean = false
+    var isReadAloud: Boolean = false,
+    var isImage: Boolean = false
 ) {
 
     val charSize: Int get() = textChars.size
@@ -24,12 +24,10 @@ data class TextLine(
         lineBase = lineBottom - textPaint.fontMetrics.descent
     }
 
-    fun addTextChar(charData: String, start: Float, end: Float) {
-        textChars.add(TextChar(charData, start = start, end = end))
-    }
-
-    fun getTextCharAt(index: Int): TextChar {
-        return textChars[index]
+    fun getTextChar(index: Int): TextChar {
+        return textChars.getOrElse(index) {
+            textChars.last()
+        }
     }
 
     fun getTextCharReverseAt(index: Int): TextChar {

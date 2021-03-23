@@ -6,10 +6,12 @@ import androidx.annotation.Keep
 import io.legado.app.constant.AppConst.dateFormat
 import io.legado.app.help.http.CookieStore
 import io.legado.app.help.http.SSLHelper
+import io.legado.app.help.http.StrResponse
 import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.QueryTTF
 import io.legado.app.utils.*
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jsoup.Connection
 import org.jsoup.Jsoup
@@ -41,6 +43,25 @@ interface JsExtensions {
     }
 
     /**
+     * 并发访问网络
+     */
+    fun fetchAll(urlList: List<String>): Array<StrResponse?> {
+        return runBlocking {
+            val asyncArray = Array(urlList.size) {
+                async {
+                    val url = urlList[it]
+                    val analyzeUrl = AnalyzeUrl(url)
+                    analyzeUrl.getStrResponse(url)
+                }
+            }
+            val resArray = Array<StrResponse?>(urlList.size) {
+                asyncArray[it].await()
+            }
+            resArray
+        }
+    }
+
+    /**
      * 访问网络,返回Response<String>
      */
     fun connect(urlStr: String): Any {
@@ -62,8 +83,8 @@ interface JsExtensions {
     fun downloadFile(content: String, url: String): String {
         val type = AnalyzeUrl(url).type ?: return ""
         val zipPath = FileUtils.getPath(
-                FileUtils.createFolderIfNotExist(FileUtils.getCachePath()),
-                "${MD5Utils.md5Encode16(url)}.${type}"
+            FileUtils.createFolderIfNotExist(FileUtils.getCachePath()),
+            "${MD5Utils.md5Encode16(url)}.${type}"
         )
         FileUtils.deleteFile(zipPath)
         val zipFile = FileUtils.createFileIfNotExist(zipPath)
@@ -81,8 +102,8 @@ interface JsExtensions {
     fun unzipFile(zipPath: String): String {
         if (zipPath.isEmpty()) return ""
         val unzipPath = FileUtils.getPath(
-                FileUtils.createFolderIfNotExist(FileUtils.getCachePath()),
-                FileUtils.getNameExcludeExtension(zipPath)
+            FileUtils.createFolderIfNotExist(FileUtils.getCachePath()),
+            FileUtils.getNameExcludeExtension(zipPath)
         )
         FileUtils.deleteFile(unzipPath)
         val zipFile = FileUtils.createFileIfNotExist(zipPath)
@@ -104,7 +125,7 @@ interface JsExtensions {
                 for (f in it) {
                     val charsetName = EncodingDetect.getEncode(f)
                     contents.append(String(f.readBytes(), charset(charsetName)))
-                            .append("\n")
+                        .append("\n")
                 }
                 contents.deleteCharAt(contents.length - 1)
             }
@@ -118,12 +139,12 @@ interface JsExtensions {
      */
     fun get(urlStr: String, headers: Map<String, String>): Connection.Response {
         return Jsoup.connect(urlStr)
-                .sslSocketFactory(SSLHelper.unsafeSSLSocketFactory)
-                .ignoreContentType(true)
-                .followRedirects(false)
-                .headers(headers)
-                .method(Connection.Method.GET)
-                .execute()
+            .sslSocketFactory(SSLHelper.unsafeSSLSocketFactory)
+            .ignoreContentType(true)
+            .followRedirects(false)
+            .headers(headers)
+            .method(Connection.Method.GET)
+            .execute()
     }
 
     /**
@@ -131,13 +152,13 @@ interface JsExtensions {
      */
     fun post(urlStr: String, body: String, headers: Map<String, String>): Connection.Response {
         return Jsoup.connect(urlStr)
-                .sslSocketFactory(SSLHelper.unsafeSSLSocketFactory)
-                .ignoreContentType(true)
-                .followRedirects(false)
-                .requestBody(body)
-                .headers(headers)
-                .method(Connection.Method.POST)
-                .execute()
+            .sslSocketFactory(SSLHelper.unsafeSSLSocketFactory)
+            .ignoreContentType(true)
+            .followRedirects(false)
+            .requestBody(body)
+            .headers(headers)
+            .method(Connection.Method.POST)
+            .execute()
     }
 
     /**
@@ -227,7 +248,7 @@ interface JsExtensions {
     }
 
     fun htmlFormat(str: String): String {
-        return str.htmlFormat()
+        return HtmlFormatter.formatKeepImg(str)
     }
 
     /**
@@ -257,6 +278,10 @@ interface JsExtensions {
         return null
     }
 
+    /**
+     * 返回字体解析类
+     * @param str 支持url,本地文件,base64,自动判断,自动缓存
+     */
     fun queryTTF(str: String?): QueryTTF? {
         str ?: return null
         val key = md5Encode16(str)
@@ -283,10 +308,15 @@ interface JsExtensions {
         return qTTF
     }
 
+    /**
+     * @param text 包含错误字体的内容
+     * @param font1 错误的字体
+     * @param font2 正确的字体
+     */
     fun replaceFont(
-            text: String,
-            font1: QueryTTF?,
-            font2: QueryTTF?
+        text: String,
+        font1: QueryTTF?,
+        font2: QueryTTF?
     ): String {
         if (font1 == null || font2 == null) return text
         val contentArray = text.toCharArray()

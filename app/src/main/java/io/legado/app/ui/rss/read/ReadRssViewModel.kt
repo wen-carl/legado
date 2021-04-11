@@ -53,7 +53,7 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application),
                     rssArticle = rssStar?.toRssArticle() ?: appDb.rssArticleDao.get(origin, link)
                     rssArticle?.let { rssArticle ->
                         if (!rssArticle.description.isNullOrBlank()) {
-                            contentLiveData.postValue(rssArticle.description)
+                            contentLiveData.postValue(rssArticle.description!!)
                         } else {
                             rssSource?.let {
                                 val ruleContent = it.ruleContent
@@ -94,16 +94,18 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application),
     }
 
     private fun loadContent(rssArticle: RssArticle, ruleContent: String) {
-        Rss.getContent(this, rssArticle, ruleContent, rssSource)
-            .onSuccess(IO) { body ->
-                rssArticle.description = body
-                appDb.rssArticleDao.insert(rssArticle)
-                rssStar?.let {
-                    it.description = body
-                    appDb.rssStarDao.insert(it)
+        rssSource?.let { source ->
+            Rss.getContent(this, rssArticle, ruleContent, source)
+                .onSuccess(IO) { body ->
+                    rssArticle.description = body
+                    appDb.rssArticleDao.insert(rssArticle)
+                    rssStar?.let {
+                        it.description = body
+                        appDb.rssStarDao.insert(it)
+                    }
+                    contentLiveData.postValue(body)
                 }
-                contentLiveData.postValue(body)
-            }
+        }
     }
 
     fun favorite() {

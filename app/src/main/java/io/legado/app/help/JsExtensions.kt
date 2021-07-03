@@ -4,9 +4,7 @@ import android.net.Uri
 import android.util.Base64
 import androidx.annotation.Keep
 import io.legado.app.constant.AppConst.dateFormat
-import io.legado.app.help.http.CookieStore
-import io.legado.app.help.http.SSLHelper
-import io.legado.app.help.http.StrResponse
+import io.legado.app.help.http.*
 import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.QueryTTF
@@ -16,8 +14,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jsoup.Connection
 import org.jsoup.Jsoup
-import rxhttp.wrapper.param.RxHttp
-import rxhttp.wrapper.param.toByteArray
 import splitties.init.appCtx
 import java.io.File
 import java.net.URLEncoder
@@ -292,7 +288,7 @@ interface JsExtensions {
             str.isAbsUrl() -> runBlocking {
                 var x = CacheManager.getByteArray(key)
                 if (x == null) {
-                    x = RxHttp.get(str).toByteArray().await()
+                    x = okHttpClient.newCall { url(str) }.bytes()
                     x.let {
                         CacheManager.put(key, it)
                     }
@@ -322,7 +318,7 @@ interface JsExtensions {
         if (font1 == null || font2 == null) return text
         val contentArray = text.toCharArray()
         contentArray.forEachIndexed { index, s ->
-            val oldCode = s.toInt()
+            val oldCode = s.code
             if (font1.inLimit(s)) {
                 val code = font2.getCodeByGlyf(font1.getGlyfByCode(oldCode))
                 if (code != 0) contentArray[index] = code.toChar()
@@ -350,7 +346,7 @@ interface JsExtensions {
         str: String,
         key: String,
         transformation: String,
-        iv: String = ""
+        iv: String
     ): ByteArray? {
 
         return EncoderUtils.decryptAES(
@@ -373,7 +369,7 @@ interface JsExtensions {
         str: String,
         key: String,
         transformation: String,
-        iv: String = ""
+        iv: String
     ): String? {
         return aesDecodeToByteArray(str, key, transformation, iv)?.let { String(it) }
     }
@@ -390,7 +386,7 @@ interface JsExtensions {
         str: String,
         key: String,
         transformation: String,
-        iv: String = ""
+        iv: String
     ): ByteArray? {
         return EncoderUtils.decryptBase64AES(
             data = str.encodeToByteArray(),
@@ -412,7 +408,7 @@ interface JsExtensions {
         str: String,
         key: String,
         transformation: String,
-        iv: String = ""
+        iv: String
     ): String? {
         return aesBase64DecodeToByteArray(str, key, transformation, iv)?.let { String(it) }
     }
@@ -426,7 +422,7 @@ interface JsExtensions {
      */
     fun aesEncodeToByteArray(
         data: String, key: String, transformation: String,
-        iv: String = ""
+        iv: String
     ): ByteArray? {
         return EncoderUtils.encryptAES(
             data.encodeToByteArray(),
@@ -445,7 +441,7 @@ interface JsExtensions {
      */
     fun aesEncodeToString(
         data: String, key: String, transformation: String,
-        iv: String = ""
+        iv: String
     ): String? {
         return aesEncodeToByteArray(data, key, transformation, iv)?.let { String(it) }
     }
@@ -459,7 +455,7 @@ interface JsExtensions {
      */
     fun aesEncodeToBase64ByteArray(
         data: String, key: String, transformation: String,
-        iv: String = ""
+        iv: String
     ): ByteArray? {
         return EncoderUtils.encryptAES2Base64(
             data.encodeToByteArray(),
@@ -478,7 +474,7 @@ interface JsExtensions {
      */
     fun aesEncodeToBase64String(
         data: String, key: String, transformation: String,
-        iv: String = ""
+        iv: String
     ): String? {
         return aesEncodeToBase64ByteArray(data, key, transformation, iv)?.let { String(it) }
     }

@@ -14,6 +14,7 @@ import androidx.viewbinding.ViewBinding
 import io.legado.app.App
 import io.legado.app.R
 import io.legado.app.constant.AppConst
+import io.legado.app.constant.PreferKey
 import io.legado.app.constant.Theme
 import io.legado.app.help.AppConfig
 import io.legado.app.help.ThemeConfig
@@ -32,11 +33,12 @@ abstract class BaseActivity<VB : ViewBinding>(
     val fullScreen: Boolean = true,
     private val theme: Theme = Theme.Auto,
     private val toolBarTheme: Theme = Theme.Auto,
-    private val transparent: Boolean = false
+    private val transparent: Boolean = false,
+    private val imageBg: Boolean = true
 ) : AppCompatActivity(),
     CoroutineScope by MainScope() {
 
-    protected val binding: VB by lazy { getViewBinding() }
+    protected abstract val binding: VB
 
     val isInMultiWindow: Boolean
         get() {
@@ -51,8 +53,6 @@ abstract class BaseActivity<VB : ViewBinding>(
         super.attachBaseContext(LanguageUtils.setConfiguration(newBase))
     }
 
-    protected abstract fun getViewBinding(): VB
-
     override fun onCreateView(
         parent: View?,
         name: String,
@@ -66,6 +66,26 @@ abstract class BaseActivity<VB : ViewBinding>(
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            getPrefBoolean(PreferKey.highBrush)
+        ) {
+            /**
+             * 添加高刷新率支持
+             */
+            // 获取系统window支持的模式
+            @Suppress("DEPRECATION")
+            val modes = window.windowManager.defaultDisplay.supportedModes
+            // 对获取的模式，基于刷新率的大小进行排序，从小到大排序
+            modes.sortBy {
+                it.refreshRate
+            }
+            window.let {
+                val lp = it.attributes
+                // 取出最大的那一个刷新率，直接设置给window
+                lp.preferredDisplayModeId = modes.last().modeId
+                it.attributes = lp
+            }
+        }
         window.decorView.disableAutoFill()
         initTheme()
         super.onCreate(savedInstanceState)
@@ -152,11 +172,15 @@ abstract class BaseActivity<VB : ViewBinding>(
                 ATH.applyBackgroundTint(window.decorView)
             }
         }
-        if (AppConfig.isGooglePlay) {
-            ThemeConfig.getBgImage(this)?.let {
-                kotlin.runCatching {
+        if (imageBg) {
+            try {
+                ThemeConfig.getBgImage(this)?.let {
                     window.decorView.background = it
                 }
+            } catch (e: OutOfMemoryError) {
+                toastOnUi(e.localizedMessage)
+            } catch (e: Exception) {
+                toastOnUi(e.localizedMessage)
             }
         }
     }

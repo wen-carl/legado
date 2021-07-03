@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package io.legado.app.ui.main
 
 import android.os.Bundle
@@ -25,41 +27,45 @@ import io.legado.app.help.storage.Backup
 import io.legado.app.lib.theme.ATH
 import io.legado.app.lib.theme.elevation
 import io.legado.app.service.BaseReadAloudService
-import io.legado.app.ui.main.bookshelf.BookshelfFragment
+import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
+import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
+import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
 import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.main.rss.RssFragment
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.toastOnUi
+import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 
 class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     BottomNavigationView.OnNavigationItemSelectedListener,
-    BottomNavigationView.OnNavigationItemReselectedListener,
-    ViewPager.OnPageChangeListener by ViewPager.SimpleOnPageChangeListener() {
-    override val viewModel: MainViewModel by viewModels()
+    BottomNavigationView.OnNavigationItemReselectedListener {
+
+    override val binding by viewBinding(ActivityMainBinding::inflate)
+    override val viewModel by viewModels<MainViewModel>()
     private var exitTime: Long = 0
     private var bookshelfReselected: Long = 0
     private var exploreReselected: Long = 0
     private var pagePosition = 0
     private val fragmentMap = hashMapOf<Int, Fragment>()
+    private var bottomMenuCount = 2
+    private val realPositions = arrayOf(0, 1, 2, 3)
 
-    override fun getViewBinding(): ActivityMainBinding {
-        return ActivityMainBinding.inflate(layoutInflater)
-    }
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) = with(binding) {
-        ATH.applyEdgeEffectColor(viewPagerMain)
-        ATH.applyBottomNavigationColor(bottomNavigationView)
-        viewPagerMain.offscreenPageLimit = 3
-        viewPagerMain.adapter = TabFragmentPageAdapter(supportFragmentManager)
-        viewPagerMain.addOnPageChangeListener(this@MainActivity)
-        bottomNavigationView.elevation =
-            if (AppConfig.elevation < 0) elevation else AppConfig.elevation.toFloat()
-        bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
-        bottomNavigationView.setOnNavigationItemReselectedListener(this@MainActivity)
-        bottomNavigationView.menu.findItem(R.id.menu_rss).isVisible = AppConfig.isShowRSS
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        upBottomMenu()
+        binding.apply {
+            ATH.applyEdgeEffectColor(viewPagerMain)
+            ATH.applyBottomNavigationColor(bottomNavigationView)
+            viewPagerMain.offscreenPageLimit = 3
+            viewPagerMain.adapter = TabFragmentPageAdapter(supportFragmentManager)
+            viewPagerMain.addOnPageChangeListener(PageChangeCallback())
+            bottomNavigationView.elevation =
+                if (AppConfig.elevation < 0) elevation else AppConfig.elevation.toFloat()
+            bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
+            bottomNavigationView.setOnNavigationItemReselectedListener(this@MainActivity)
+        }
     }
 
     override fun onPostCreate(savedInstanceState: Bundle?) {
@@ -79,9 +85,13 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     override fun onNavigationItemSelected(item: MenuItem): Boolean = with(binding) {
         when (item.itemId) {
             R.id.menu_bookshelf -> viewPagerMain.setCurrentItem(0, false)
-            R.id.menu_explore -> viewPagerMain.setCurrentItem(1, false)
-            R.id.menu_rss -> viewPagerMain.setCurrentItem(2, false)
-            R.id.menu_my_config -> viewPagerMain.setCurrentItem(3, false)
+            R.id.menu_discovery -> viewPagerMain.setCurrentItem(1, false)
+            R.id.menu_rss -> if (AppConfig.showDiscovery) {
+                viewPagerMain.setCurrentItem(2, false)
+            } else {
+                viewPagerMain.setCurrentItem(1, false)
+            }
+            R.id.menu_my_config -> viewPagerMain.setCurrentItem(bottomMenuCount - 1, false)
         }
         return false
     }
@@ -92,10 +102,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 if (System.currentTimeMillis() - bookshelfReselected > 300) {
                     bookshelfReselected = System.currentTimeMillis()
                 } else {
-                    (fragmentMap[0] as? BookshelfFragment)?.gotoTop()
+                    (fragmentMap[getFragmentId(0)] as? BaseBookshelfFragment)?.gotoTop()
                 }
             }
-            R.id.menu_explore -> {
+            R.id.menu_discovery -> {
                 if (System.currentTimeMillis() - exploreReselected > 300) {
                     exploreReselected = System.currentTimeMillis()
                 } else {
@@ -117,18 +127,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 DefaultData.importDefaultTocRules()//版本更新时更新自带本地txt目录规则
             }
             viewModel.upVersion()
-        }
-    }
-
-    override fun onPageSelected(position: Int) = with(binding) {
-        pagePosition = position
-        when (position) {
-            0, 1, 3 -> bottomNavigationView.menu.getItem(position).isChecked = true
-            2 -> if (AppConfig.isShowRSS) {
-                bottomNavigationView.menu.getItem(position).isChecked = true
-            } else {
-                bottomNavigationView.menu.getItem(3).isChecked = true
-            }
         }
     }
 
@@ -173,12 +171,13 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         observeEvent<String>(EventBus.RECREATE) {
             recreate()
         }
-        observeEvent<String>(EventBus.SHOW_RSS) {
-            binding.bottomNavigationView.menu.findItem(R.id.menu_rss).isVisible =
-                AppConfig.isShowRSS
-            binding.viewPagerMain.adapter?.notifyDataSetChanged()
-            if (AppConfig.isShowRSS) {
-                binding.viewPagerMain.setCurrentItem(3, false)
+        observeEvent<Boolean>(EventBus.NOTIFY_MAIN) {
+            binding.apply {
+                upBottomMenu()
+                viewPagerMain.adapter?.notifyDataSetChanged()
+                if (it) {
+                    viewPagerMain.setCurrentItem(bottomMenuCount - 1, false)
+                }
             }
         }
         observeEvent<String>(PreferKey.threadCount) {
@@ -186,14 +185,58 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
     }
 
+    private fun upBottomMenu() {
+        val showDiscovery = AppConfig.showDiscovery
+        val showRss = AppConfig.showRSS
+        binding.bottomNavigationView.menu.let { menu ->
+            menu.findItem(R.id.menu_discovery).isVisible = showDiscovery
+            menu.findItem(R.id.menu_rss).isVisible = showRss
+        }
+        bottomMenuCount = 2
+        realPositions[1] = 1
+        realPositions[2] = 2
+        when {
+            showDiscovery -> bottomMenuCount++
+            showRss -> {
+                realPositions[1] = 2
+                realPositions[2] = 3
+            }
+            else -> {
+                realPositions[1] = 3
+                realPositions[2] = 3
+            }
+        }
+        if (showRss) {
+            bottomMenuCount++
+        } else {
+            realPositions[2] = 3
+        }
+    }
+
+    private fun getFragmentId(position: Int): Int {
+        val p = realPositions[position]
+        if (p == 0) {
+            return if (AppConfig.bookGroupStyle == 1) 11 else 0
+        }
+        return p
+    }
+
+    private inner class PageChangeCallback : ViewPager.SimpleOnPageChangeListener() {
+
+        override fun onPageSelected(position: Int) {
+            pagePosition = position
+            binding.bottomNavigationView.menu
+                .getItem(realPositions[position]).isChecked = true
+        }
+
+    }
+
+    @Suppress("DEPRECATION")
     private inner class TabFragmentPageAdapter(fm: FragmentManager) :
         FragmentStatePagerAdapter(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
 
         private fun getId(position: Int): Int {
-            return when (position) {
-                2 -> if (AppConfig.isShowRSS) 2 else 3
-                else -> position
-            }
+            return getFragmentId(position)
         }
 
         override fun getItemPosition(`object`: Any): Int {
@@ -202,7 +245,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
         override fun getItem(position: Int): Fragment {
             return when (getId(position)) {
-                0 -> BookshelfFragment()
+                0 -> BookshelfFragment1()
+                11 -> BookshelfFragment2()
                 1 -> ExploreFragment()
                 2 -> RssFragment()
                 else -> MyFragment()
@@ -210,7 +254,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
 
         override fun getCount(): Int {
-            return if (AppConfig.isShowRSS) 4 else 3
+            return bottomMenuCount
         }
 
         override fun instantiateItem(container: ViewGroup, position: Int): Any {

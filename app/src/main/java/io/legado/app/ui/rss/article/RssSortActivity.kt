@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package io.legado.app.ui.rss.article
 
 import android.content.Intent
@@ -7,21 +9,21 @@ import android.view.MenuItem
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.fragment.app.Fragment
-import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.google.android.material.tabs.TabLayoutMediator
+import androidx.fragment.app.FragmentStatePagerAdapter
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.databinding.ActivityRssArtivlesBinding
 import io.legado.app.ui.rss.source.edit.RssSourceEditActivity
 import io.legado.app.utils.gone
+import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 
 class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewModel>() {
 
-    override val viewModel: RssSortViewModel
-            by viewModels()
-    private val fragments = linkedMapOf<String, RssArticlesFragment>()
+    override val binding by viewBinding(ActivityRssArtivlesBinding::inflate)
+    override val viewModel by viewModels<RssSortViewModel>()
     private lateinit var adapter: TabFragmentPageAdapter
+    private val fragments = linkedMapOf<String, Fragment>()
     private val upSourceResult = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -32,16 +34,10 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
         }
     }
 
-    override fun getViewBinding(): ActivityRssArtivlesBinding {
-        return ActivityRssArtivlesBinding.inflate(layoutInflater)
-    }
-
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         adapter = TabFragmentPageAdapter()
         binding.viewPager.adapter = adapter
-        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
-            tab.text = fragments.keys.elementAt(position)
-        }.attach()
+        binding.tabLayout.setupWithViewPager(binding.viewPager)
         viewModel.titleLiveData.observe(this, {
             binding.titleBar.title = it
         })
@@ -89,15 +85,25 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
         adapter.notifyDataSetChanged()
     }
 
-    private inner class TabFragmentPageAdapter : FragmentStateAdapter(this) {
+    private inner class TabFragmentPageAdapter :
+        FragmentStatePagerAdapter(supportFragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
 
-        override fun getItemCount(): Int {
+        override fun getItemPosition(`object`: Any): Int {
+            return POSITION_NONE
+        }
+
+        override fun getPageTitle(position: Int): CharSequence {
+            return fragments.keys.elementAt(position)
+        }
+
+        override fun getItem(position: Int): Fragment {
+            return fragments.values.elementAt(position)
+        }
+
+        override fun getCount(): Int {
             return fragments.size
         }
 
-        override fun createFragment(position: Int): Fragment {
-            return fragments.values.elementAt(position)
-        }
     }
 
 }

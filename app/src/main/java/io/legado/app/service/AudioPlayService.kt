@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.BitmapFactory
-import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
@@ -16,6 +15,7 @@ import android.os.Looper
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
+import androidx.media.AudioFocusRequestCompat
 import io.legado.app.R
 import io.legado.app.base.BaseService
 import io.legado.app.constant.AppConst
@@ -29,7 +29,7 @@ import io.legado.app.help.MediaHelp
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.receiver.MediaButtonReceiver
 import io.legado.app.service.help.AudioPlay
-import io.legado.app.ui.audio.AudioPlayActivity
+import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.Main
@@ -52,7 +52,7 @@ class AudioPlayService : BaseService(),
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var audioManager: AudioManager
-    private var mFocusRequest: AudioFocusRequest? = null
+    private var mFocusRequest: AudioFocusRequestCompat? = null
     private var title: String = ""
     private var subtitle: String = ""
     private val mediaPlayer = MediaPlayer()
@@ -479,7 +479,7 @@ class AudioPlayService : BaseService(),
      * @return 音频焦点
      */
     private fun requestFocus(): Boolean {
-        return MediaHelp.requestFocus(audioManager, this, mFocusRequest)
+        return MediaHelp.requestFocus(audioManager, mFocusRequest)
     }
 
     private fun thisPendingIntent(action: String): PendingIntent? {

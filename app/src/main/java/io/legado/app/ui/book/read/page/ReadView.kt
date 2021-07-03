@@ -6,9 +6,11 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.os.Build
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import android.view.WindowInsets
 import android.widget.FrameLayout
 import io.legado.app.help.AppConfig
 import io.legado.app.help.ReadBookConfig
@@ -102,8 +104,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
         setRect9x()
     }
 
-    public fun setRect9x() {
-        val edge = if (AppConfig.fullScreenGesturesSupport) { 200f } else { 0f }
+    fun setRect9x() {
+        val edge = if (AppConfig.fullScreenGesturesSupport) 200f else 0f
         tlRect.set(0f + edge, 0f, width * 0.33f, height * 0.33f)
         tcRect.set(width * 0.33f, 0f, width * 0.66f, height * 0.33f)
         trRect.set(width * 0.36f, 0f, width - 0f - edge, height * 0.33f)
@@ -156,6 +158,17 @@ class ReadView(context: Context, attrs: AttributeSet) :
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         callBack.screenOffTimerStart()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val insets =
+                this.rootWindowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.mandatorySystemGestures())
+            val height = activity?.windowManager?.currentWindowMetrics?.bounds?.height()
+            if (height != null) {
+                if (event.y > height.minus(insets.bottom)) {
+                    return true
+                }
+            }
+        }
+
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 if (isTextSelected) {

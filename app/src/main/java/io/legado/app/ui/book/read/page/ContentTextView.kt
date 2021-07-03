@@ -23,6 +23,7 @@ import io.legado.app.ui.widget.dialog.PhotoDialog
 import io.legado.app.utils.activity
 import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.min
 
@@ -178,7 +179,11 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                         val div = (lineBottom - lineTop - h) / 2
                         RectF(textChar.start, lineTop + div, textChar.end, lineBottom - div)
                     }
-                    canvas.drawBitmap(it, null, rectF, null)
+                    kotlin.runCatching {
+                        canvas.drawBitmap(it, null, rectF, null)
+                    }.onFailure { e ->
+                        context.toastOnUi(e.localizedMessage)
+                    }
                 }
         }
     }
@@ -492,17 +497,14 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
     fun createBookmark(): Bookmark? {
         val page = relativePage(selectStart[0])
         page.getTextChapter()?.let { chapter ->
-            val chapterPos = chapter.getReadLength(page.index) +
-                    page.getSelectStartLength(selectStart[1], selectStart[2])
             ReadBook.book?.let { book ->
-                return Bookmark(
-                    bookUrl = book.bookUrl,
-                    bookName = book.name,
-                    chapterIndex = page.chapterIndex,
-                    chapterPos = chapterPos,
-                    chapterName = chapter.title,
+                return book.createBookMark().apply {
+                    chapterIndex = page.chapterIndex
+                    chapterPos = chapter.getReadLength(page.index) +
+                            page.getSelectStartLength(selectStart[1], selectStart[2])
+                    chapterName = chapter.title
                     bookText = selectedText
-                )
+                }
             }
         }
         return null

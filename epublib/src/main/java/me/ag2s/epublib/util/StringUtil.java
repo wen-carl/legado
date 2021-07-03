@@ -273,21 +273,19 @@ public class StringUtil {
         }
         return text.substring(cPos + 1);
     }
-    public static String FixTrim(String s) {
-        if (s==null){
-            return "";
-        }
-        Pattern r = Pattern.compile("^[\\s]{1,9}(.*?)[\\s]{1,9}$");
-        Matcher m = r.matcher(s);
-        if (m.find()) {
-            s= m.group(1);
-        }
-        if(s==null){
-            return "";
-        }
-        //移除GBK中文全角空格
-        s = s.replace("　", "");
-        return s;
-    }
 
+    public static String formatHtml(String text) {
+        StringBuilder body = new StringBuilder();
+        for (String s : text.split("\\r?\\n")) {
+            s = s.replaceAll("^\\s+|\\s+$", "");
+            if (s.length() > 0) {
+                if (s.toLowerCase().contains("<img")) {
+                    body.append(s.replaceAll("(?i)<img\\s([^>]+)/?>", "<div class=\"duokan-image-single\"><img class=\"picture-80\" $1/></div>"));
+                } else {
+                    body.append("<p>").append(s).append("</p>");
+                }
+            }
+        }
+        return body.toString();
+    }
 }

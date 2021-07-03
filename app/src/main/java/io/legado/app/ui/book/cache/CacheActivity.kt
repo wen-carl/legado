@@ -28,6 +28,7 @@ import io.legado.app.ui.document.FilePicker
 import io.legado.app.ui.document.FilePickerParam
 import io.legado.app.ui.widget.dialog.TextListDialog
 import io.legado.app.utils.*
+import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
@@ -37,6 +38,18 @@ import java.util.concurrent.CopyOnWriteArraySet
 
 class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>(),
     CacheAdapter.CallBack {
+
+    override val binding by viewBinding(ActivityCacheBookBinding::inflate)
+    override val viewModel by viewModels<CacheViewModel>()
+
+    private val exportBookPathKey = "exportBookPath"
+    lateinit var adapter: CacheAdapter
+    private var groupLiveData: LiveData<List<BookGroup>>? = null
+    private var booksLiveData: LiveData<List<Book>>? = null
+    private var menu: Menu? = null
+    private var exportPosition = -1
+    private val groupList: ArrayList<BookGroup> = arrayListOf()
+    private var groupId: Long = -1
 
     private val exportDir = registerForActivityResult(FilePicker()) { uri ->
         uri ?: return@registerForActivityResult
@@ -50,24 +63,15 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             }
         }
     }
-    private val exportBookPathKey = "exportBookPath"
-    lateinit var adapter: CacheAdapter
-    private var groupLiveData: LiveData<List<BookGroup>>? = null
-    private var booksLiveData: LiveData<List<Book>>? = null
-    private var menu: Menu? = null
-    private var exportPosition = -1
-    private val groupList: ArrayList<BookGroup> = arrayListOf()
-    private var groupId: Long = -1
-
-    override val viewModel: CacheViewModel by viewModels()
-
-    override fun getViewBinding(): ActivityCacheBookBinding {
-        return ActivityCacheBookBinding.inflate(layoutInflater)
-    }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         groupId = intent.getLongExtra("groupId", -1)
-        binding.titleBar.subtitle = intent.getStringExtra("groupName") ?: getString(R.string.all)
+        launch {
+            binding.titleBar.subtitle = withContext(IO) {
+                appDb.bookGroupDao.getByID(groupId)?.groupName
+                    ?: getString(R.string.no_group)
+            }
+        }
         initRecyclerView()
         initGroupData()
         initBookData()
@@ -115,9 +119,14 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
                     CacheBook.stop(this@CacheActivity)
                 }
             }
+            R.id.menu_export_all -> exportAll()
             R.id.menu_enable_replace -> AppConfig.exportUseReplace = !item.isChecked
             R.id.menu_export_web_dav -> AppConfig.exportToWebDav = !item.isChecked
-            R.id.menu_export_folder -> export(-1)
+            R.id.menu_export_folder -> {
+                exportPosition = -1
+                selectExportFolder()
+            }
+            R.id.menu_export_file_name -> alertExportFileName()
             R.id.menu_export_type -> showExportTypeConfig()
             R.id.menu_export_charset -> showCharsetConfig()
             R.id.menu_log ->
@@ -212,7 +221,17 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
     override fun export(position: Int) {
         exportPosition = position
         val path = ACache.get(this@CacheActivity).getAsString(exportBookPathKey)
-        if (path.isNullOrEmpty() || position < 0) {
+        if (path.isNullOrEmpty()) {
+            selectExportFolder()
+        } else {
+            startExport(path)
+        }
+    }
+
+    private fun exportAll() {
+        exportPosition = -10
+        val path = ACache.get(this@CacheActivity).getAsString(exportBookPathKey)
+        if (path.isNullOrEmpty()) {
             selectExportFolder()
         } else {
             startExport(path)
@@ -233,18 +252,59 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
     }
 
     private fun startExport(path: String) {
-        adapter.getItem(exportPosition)?.let { book ->
-            Snackbar.make(binding.titleBar, R.string.exporting, Snackbar.LENGTH_INDEFINITE)
-                .show()
-            when (AppConfig.exportType) {
-                1 -> viewModel.exportEPUB(path, book) {
-                    binding.titleBar.snackbar(it)
+        if (exportPosition == -10) {
+            if (adapter.getItems().isNotEmpty()) {
+                Snackbar.make(binding.titleBar, R.string.exporting, Snackbar.LENGTH_INDEFINITE)
+                    .show()
+                var exportSize = adapter.getItems().size
+                adapter.getItems().forEach { book ->
+                    when (AppConfig.exportType) {
+                        1 -> viewModel.exportEPUB(path, book) {
+                            exportSize--
+                            toastOnUi(it)
+                            if (exportSize <= 0) {
+                                binding.titleBar.snackbar(R.string.complete)
+                            }
+                        }
+                        else -> viewModel.export(path, book) {
+                            exportSize--
+                            toastOnUi(it)
+                            if (exportSize <= 0) {
+                                binding.titleBar.snackbar(R.string.complete)
+                            }
+                        }
+                    }
                 }
-                else -> viewModel.export(path, book) {
-                    binding.titleBar.snackbar(it)
+            } else {
+                toastOnUi(R.string.no_book)
+            }
+        } else if (exportPosition >= 0) {
+            adapter.getItem(exportPosition)?.let { book ->
+                Snackbar.make(binding.titleBar, R.string.exporting, Snackbar.LENGTH_INDEFINITE)
+                    .show()
+                when (AppConfig.exportType) {
+                    1 -> viewModel.exportEPUB(path, book) {
+                        binding.titleBar.snackbar(it)
+                    }
+                    else -> viewModel.export(path, book) {
+                        binding.titleBar.snackbar(it)
+                    }
                 }
             }
         }
+    }
+
+    private fun alertExportFileName() {
+        alert(R.string.export_file_name) {
+            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
+                editView.setText(AppConfig.bookExportFileName)
+            }
+            customView { alertBinding.root }
+            okButton {
+                AppConfig.bookExportFileName = alertBinding.editView.text?.toString()
+            }
+            cancelButton()
+        }.show()
     }
 
     private fun showExportTypeConfig() {

@@ -7,13 +7,14 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSource
+import io.legado.app.help.http.newCall
+import io.legado.app.help.http.okHttpClient
+import io.legado.app.help.http.text
 import io.legado.app.model.webBook.PreciseSearch
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.*
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.isActive
-import rxhttp.wrapper.param.RxHttp
-import rxhttp.wrapper.param.toText
 
 class BookshelfViewModel(application: Application) : BaseViewModel(application) {
 
@@ -48,7 +49,7 @@ class BookshelfViewModel(application: Application) : BaseViewModel(application) 
                     WebBook(bookSource).getBookInfo(this, book)
                         .onSuccess(IO) {
                             it.order = appDb.bookDao.maxOrder + 1
-                            appDb.bookDao.insert(it)
+                            it.save()
                             successCount++
                         }.onError {
                             throw Exception(it.localizedMessage)
@@ -87,7 +88,9 @@ class BookshelfViewModel(application: Application) : BaseViewModel(application) 
             val text = str.trim()
             when {
                 text.isAbsUrl() -> {
-                    RxHttp.get(text).toText().await().let {
+                    okHttpClient.newCall {
+                        url(text)
+                    }.text().let {
                         importBookshelf(it, groupId)
                     }
                 }
@@ -117,7 +120,7 @@ class BookshelfViewModel(application: Application) : BaseViewModel(application) 
                         if (groupId > 0) {
                             book.group = groupId
                         }
-                        appDb.bookDao.insert(book)
+                        book.save()
                     }
                 }
             }
